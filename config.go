@@ -108,6 +108,12 @@ func defineFunctions(w *eval.World) {
 	}
 
 	{
+		var functionSignature func()
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_InstallPackage, functionSignature)
+		w.DefineVar("InstallPackage", funcType, funcValue)
+	}
+
+	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_InstallExecutable, functionSignature)
 		w.DefineVar("InstallExecutable", funcType, funcValue)
@@ -133,6 +139,7 @@ func wrapper_Package(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	if len(currentConfig.targetPackage_orEmpty) != 0 {
 		t.Abort(os.NewError("duplicate target package specification"))
+		return
 	}
 
 	pkg = strings.TrimSpace(pkg)
@@ -323,6 +330,28 @@ func wrapper_MinCompilerVersion(t *eval.Thread, in []eval.Value, out []eval.Valu
 	}
 }
 
+
+// Signature: func InstallPackage()
+func wrapper_InstallPackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	pkg := currentConfig.targetPackage_orEmpty
+	if len(pkg) == 0 {
+		t.Abort(os.NewError("no target package has been defined"))
+		return
+	}
+
+	if _, alreadyPresent := installationCommands_packagesByImport[pkg]; alreadyPresent {
+		t.Abort(os.NewError("duplicate installation of package \"" + pkg + "\""))
+		return
+	}
+
+	if *flag_debug {
+		fmt.Printf("(read config) install package \"" + pkg + "\"\n")
+	}
+
+	cmd := new_installPackage(pkg)
+	installationCommands = append(installationCommands, cmd)
+	installationCommands_packagesByImport[pkg] = cmd
+}
 
 // Signature: func InstallExecutable(srcPath string)
 func wrapper_InstallExecutable(t *eval.Thread, in []eval.Value, out []eval.Value) {

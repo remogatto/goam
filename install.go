@@ -18,6 +18,71 @@ type installation_command_t interface {
 
 var installationCommands []installation_command_t = nil
 var installationCommands_bySrcPath = make(map[string]installation_command_t)
+var installationCommands_packagesByImport = make(map[string]*install_package_t)
+
+
+// =================
+// install_package_t
+// =================
+
+type install_package_t struct {
+	importPath string
+}
+
+func new_installPackage(importPath string) *install_package_t {
+	return &install_package_t{importPath}
+}
+
+func (i *install_package_t) find() (*package_resolution_t, os.Error) {
+	pkg, ok := importPathResolutionTable[i.importPath]
+	if !ok {
+		return nil, os.NewError("unable to install package \"" + i.importPath + "\": no such package")
+	}
+
+	return pkg, nil
+}
+
+func (i *install_package_t) Install(root *dir_t) os.Error {
+	pkg, err := i.find()
+	if err != nil {
+		return err
+	}
+
+	err = pkg.lib.Install(i.importPath)
+	if err != nil {
+		return err
+	}
+
+	if pkg.dynLib_orNil != nil {
+		err = pkg.dynLib_orNil.Install()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (i *install_package_t) Uninstall(root *dir_t) os.Error {
+	pkg, err := i.find()
+	if err != nil {
+		return err
+	}
+
+	err = pkg.lib.Uninstall(i.importPath)
+	if err != nil {
+		return err
+	}
+
+	if pkg.dynLib_orNil != nil {
+		err = pkg.dynLib_orNil.Uninstall()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 
 // ====================
@@ -34,6 +99,9 @@ func new_installExecutable(srcPath string) *install_executable_t {
 
 func (i *install_executable_t) find(root *dir_t) (*executable_t, os.Error) {
 	var _exe object_t = root.getObject_orNil(strings.Split(i.srcPath, "/", -1))
+	if _exe == nil {
+		return nil, os.NewError("unable to locate executable \"" + i.srcPath + "\"")
+	}
 
 	var exe *executable_t
 	var isExe bool
@@ -62,6 +130,7 @@ func (i *install_executable_t) Uninstall(root *dir_t) os.Error {
 
 	return exe.Uninstall()
 }
+
 
 // =============
 // install_dir_t

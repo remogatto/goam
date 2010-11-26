@@ -1,0 +1,7 @@
+The sub-directories contain simple example projects showing Goam's usage.
+As a first step, you can change to one of the sub-directories
+and execute "goam -v info". Executing "goam" without any arguments
+will print available commands.
+
+The files "GOAM.conf" contain detailed descriptions of configuration
+statements they are using.

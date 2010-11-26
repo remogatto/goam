@@ -1,0 +1,3 @@
+This example shows one way of how to use standard Go Makefiles in a project.
+The sub-directory "lib" uses a Makefile to define a package that is imported
+as "internal/lib".

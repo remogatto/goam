@@ -96,6 +96,7 @@ type executable_t struct {
 	nowBuilding            bool
 }
 
+
 // =======
 // entry_t
 // =======
@@ -575,6 +576,51 @@ func (l *library_t) Clean() os.Error {
 	}
 
 	return err
+}
+
+func (l *library_t) Install(importPath string) os.Error {
+	dir, base := pathutil.Split(importPath)
+
+	dstFullPath := pathutil.Join(libInstallRoot, dir)
+
+	err := mkdirAll(dstFullPath, 0777)
+	if err != nil {
+		return err
+	}
+
+	installPath := pathutil.Join(dstFullPath, base+".a")
+
+	args := []string{cp_exe.name, "-a", l.path, installPath}
+	err = cp_exe.runSimply(args, /*dir*/ "", /*dontPrint*/ false)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *library_t) Uninstall(importPath string) os.Error {
+	dir, base := pathutil.Split(importPath)
+
+	installPath := pathutil.Join(libInstallRoot, dir, base+".a")
+
+	if fileExists(installPath) {
+		if *flag_debug {
+			println("uninstall:", installPath)
+		}
+
+		err := os.Remove(installPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := uninstallEmptyDirs(libInstallRoot, dir)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (l *library_t) GoFmt() os.Error {
