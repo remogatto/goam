@@ -39,7 +39,7 @@ func init() {
 	case "amd64":
 		o_ext = ".6"
 		goCompilerName = "6g"
-		goLinkerName = "5l"
+		goLinkerName = "6l"
 
 	case "arm":
 		o_ext = ".5"
