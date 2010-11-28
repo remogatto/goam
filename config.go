@@ -316,8 +316,7 @@ func wrapper_MinCompilerVersion(t *eval.Thread, in []eval.Value, out []eval.Valu
 		t.Abort(os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\""))
 		return
 	}
-
-	version, err := strconv.Atoui(stdout_split[2])
+	version, err := strconv.Atoui(strings.TrimRight(stdout_split[2], "+"))
 	if err != nil {
 		t.Abort(os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\""))
 		return
