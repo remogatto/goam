@@ -798,7 +798,7 @@ func (e *executable_t) addMakefile(m *makefile_t) os.Error {
 	return nil
 }
 
-func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
+func (e *executable_t) collectLibs() ([]*dir_t, []*library_t, []*dyn_library_t, os.Error) {
 	var imports = make(map[string]*package_resolution_t)
 
 	// The set of import statements to process
@@ -811,7 +811,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
 		for _, goSourceCode = range compilationUnit.sources {
 			contents, err := goSourceCode.Contents()
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			for _, importedPackage := range contents.importedPackages {
@@ -828,7 +828,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
 			test := (importPath == e.testImportPath_orEmpty)
 			pkg_orNil, err := resolvePackage(importPath, test)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			imports[importPath] = pkg_orNil
@@ -843,7 +843,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
 					for _, goSourceCode = range compilationUnit.sources {
 						contents, err := goSourceCode.Contents()
 						if err != nil {
-							return nil, nil, err
+							return nil, nil, nil, err
 						}
 
 						for _, importedPackage := range contents.importedPackages {
@@ -865,27 +865,33 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
 	}
 
 	var libIncludePaths = make([]*dir_t, len(imports))
+	var libs = make([]*library_t, len(imports))
 	var dynLibs = make([]*dyn_library_t, len(imports))
 	{
-		i, j := 0, 0
+		i, j, k := 0, 0, 0
 		for _, pkg_orNil := range imports {
 			if pkg_orNil != nil {
 				pkg := pkg_orNil
+
 				libIncludePaths[i] = pkg.includePath
 				i++
 
+				libs[j] = pkg.lib
+				j++
+
 				if pkg.dynLib_orNil != nil {
-					dynLibs[j] = pkg.dynLib_orNil
-					j++
+					dynLibs[k] = pkg.dynLib_orNil
+					k++
 				}
 			}
 		}
 
 		libIncludePaths = libIncludePaths[0:i]
-		dynLibs = dynLibs[0:j]
+		libs = libs[0:j]
+		dynLibs = dynLibs[0:k]
 	}
 
-	return libIncludePaths, dynLibs, nil
+	return libIncludePaths, libs, dynLibs, nil
 }
 
 func (e *executable_t) UpdateFileSystemModel() {
@@ -919,21 +925,33 @@ func (e *executable_t) Info(info *info_t) {
 }
 
 func (e *executable_t) doMake(installMode bool) os.Error {
+	var err os.Error
+
 	if e.nowBuilding {
 		return os.NewError("circular dependency involving \"" + e.path + "\"")
 	}
 	e.nowBuilding = true
 	defer func() { e.nowBuilding = false }()
 
+	var libIncludePaths []*dir_t
+	var libs []*library_t
+	var dynLibs []*dyn_library_t
+	libIncludePaths, libs, dynLibs, err = e.collectLibs()
+	if err != nil {
+		return err
+	}
+
 	rebuild := false
 	if !e.exists {
 		rebuild = true
 	}
 
+	// Build all prerequisites
 	{
 		mtime := e.mtime
+
 		for _, src := range e.sources {
-			err := src.Make()
+			err = src.Make()
 			if err != nil {
 				return err
 			}
@@ -942,18 +960,33 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 				rebuild = true
 			}
 		}
-	}
 
-	if rebuild || installMode {
-		if e.makefile_orNil == nil {
-			err := e.parent.mkdir_ifDoesNotExist()
+		for _, lib := range libs {
+			err = lib.Make()
 			if err != nil {
 				return err
 			}
 
-			var libIncludePaths []*dir_t
-			var dynLibs []*dyn_library_t
-			libIncludePaths, dynLibs, err = e.collectLibs()
+			if lib.Mtime() > mtime {
+				rebuild = true
+			}
+		}
+
+		for _, dynLib := range dynLibs {
+			err = dynLib.Make()
+			if err != nil {
+				return err
+			}
+
+			if dynLib.Mtime() > mtime {
+				rebuild = true
+			}
+		}
+	}
+
+	if rebuild || installMode {
+		if e.makefile_orNil == nil {
+			err = e.parent.mkdir_ifDoesNotExist()
 			if err != nil {
 				return err
 			}
@@ -1038,7 +1071,7 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 				}
 			}
 		} else {
-			err := e.makefile_orNil.Make()
+			err = e.makefile_orNil.Make()
 			if err != nil {
 				return err
 			}
@@ -1158,7 +1191,7 @@ func (e *executable_t) Uninstall() os.Error {
 	// Uninstall CGO dynamic libraries
 	{
 		var dynLibs []*dyn_library_t
-		_, dynLibs, err := e.collectLibs()
+		_, _, dynLibs, err := e.collectLibs()
 		if err != nil {
 			return err
 		}
