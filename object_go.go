@@ -721,10 +721,7 @@ func (f *go_file_contents_t) makePrerequisites(testImportPath_orEmpty string) ([
 				return nil, err
 			}
 
-			// Append 'pkg' to 'pkgs'
-			n := len(pkgs)
-			pkgs = pkgs[0 : n+1]
-			pkgs[n] = pkg
+			pkgs = append(pkgs, pkg)
 		}
 	}
 

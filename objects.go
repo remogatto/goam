@@ -277,12 +277,12 @@ func (u *compilation_unit_t) Make() os.Error {
 	u.nowBuilding = true
 	defer func() { u.nowBuilding = false }()
 
-	var libIncludePaths map[string]byte = nil // This is a set of strings
-
 	rebuild := false
 	if !u.exists {
 		rebuild = true
 	}
+
+	var libIncludePaths map[string]byte = nil // This is a set of strings
 
 	{
 		var missingSources []go_source_code_t = nil
@@ -318,11 +318,15 @@ func (u *compilation_unit_t) Make() os.Error {
 			}
 
 			if len(pkgs) > 0 {
-				if libIncludePaths == nil {
-					libIncludePaths = make(map[string]byte)
-				}
+				libIncludePaths = make(map[string]byte)
 				for _, pkg := range pkgs {
 					libIncludePaths[pkg.includePath.path] = 0
+
+					if pkg.lib.Mtime() > mtime {
+						rebuild = true
+					} else if (pkg.dynLib_orNil != nil) && (pkg.dynLib_orNil.Mtime() > mtime) {
+						rebuild = true
+					}
 				}
 			}
 		}
@@ -579,11 +583,16 @@ func (l *library_t) Clean() os.Error {
 }
 
 func (l *library_t) Install(importPath string) os.Error {
+	err := l.Make()
+	if err != nil {
+		return err
+	}
+
 	dir, base := pathutil.Split(importPath)
 
 	dstFullPath := pathutil.Join(libInstallRoot, dir)
 
-	err := mkdirAll(dstFullPath, 0777)
+	err = mkdirAll(dstFullPath, 0777)
 	if err != nil {
 		return err
 	}
@@ -731,10 +740,15 @@ func (l *dyn_library_t) Clean() os.Error {
 }
 
 func (l *dyn_library_t) Install() os.Error {
+	err := l.Make()
+	if err != nil {
+		return err
+	}
+
 	installPath := pathutil.Join(libInstallRoot, l.name)
 
 	args := []string{cp_exe.name, "-a", l.path, installPath}
-	err := cp_exe.runSimply(args, /*dir*/ "", /*dontPrint*/ false)
+	err = cp_exe.runSimply(args, /*dir*/ "", /*dontPrint*/ false)
 	if err != nil {
 		return err
 	}
