@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/vector"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -285,7 +286,7 @@ func (m *makefile_t) Clean() os.Error {
 	return nil
 }
 
-func (m *makefile_t) GoFmt() os.Error {
+func (m *makefile_t) GoFmt(files *vector.StringVector) os.Error {
 	return nil
 }
 

@@ -290,7 +290,7 @@ func (f *go_file_t) Clean() os.Error {
 	return nil
 }
 
-func (f *go_file_t) GoFmt() os.Error {
+func (f *go_file_t) GoFmt(files *vector.StringVector) os.Error {
 	if _, disabled := disabledGoFmt[pathutil.Clean(f.path)]; disabled {
 		if *flag_debug {
 			println("disabled gofmt:", f.path)
@@ -305,7 +305,9 @@ func (f *go_file_t) GoFmt() os.Error {
 		return nil
 	}
 
-	return goFmt(f.path)
+	files.Push(f.path)
+
+	return nil
 }
 
 
@@ -371,7 +373,7 @@ func (t *go_test_t) Clean() os.Error {
 	return nil
 }
 
-func (t *go_test_t) GoFmt() os.Error {
+func (t *go_test_t) GoFmt(files *vector.StringVector) os.Error {
 	if _, disabled := disabledGoFmt[pathutil.Clean(t.path)]; disabled {
 		if *flag_debug {
 			println("disabled gofmt:", t.path)
@@ -379,7 +381,9 @@ func (t *go_test_t) GoFmt() os.Error {
 		return nil
 	}
 
-	return goFmt(t.path)
+	files.Push(t.path)
+
+	return nil
 }
 
 
@@ -607,7 +611,7 @@ func (t *go_testMain_t) Clean() os.Error {
 
 }
 
-func (t *go_testMain_t) GoFmt() os.Error {
+func (t *go_testMain_t) GoFmt(files *vector.StringVector) os.Error {
 	return nil
 }
 
