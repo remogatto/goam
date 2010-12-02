@@ -319,7 +319,9 @@ func (u *compilation_unit_t) Make() os.Error {
 			}
 
 			if len(pkgs) > 0 {
-				libIncludePaths = make(map[string]byte)
+				if libIncludePaths == nil {
+					libIncludePaths = make(map[string]byte)
+				}
 				for _, pkg := range pkgs {
 					libIncludePaths[pkg.includePath.path] = 0
 
