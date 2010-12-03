@@ -815,7 +815,7 @@ func (e *executable_t) addMakefile(m *makefile_t) os.Error {
 	return nil
 }
 
-func (e *executable_t) collectLibs() ([]*dir_t, []*library_t, []*dyn_library_t, os.Error) {
+func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
 	var imports = make(map[string]*package_resolution_t)
 
 	// The set of import statements to process
@@ -828,7 +828,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*library_t, []*dyn_library_t, 
 		for _, goSourceCode = range compilationUnit.sources {
 			contents, err := goSourceCode.Contents()
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, err
 			}
 
 			for _, importedPackage := range contents.importedPackages {
@@ -845,7 +845,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*library_t, []*dyn_library_t, 
 			test := (importPath == e.testImportPath_orEmpty)
 			pkg_orNil, err := resolvePackage(importPath, test)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, err
 			}
 
 			imports[importPath] = pkg_orNil
@@ -860,7 +860,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*library_t, []*dyn_library_t, 
 					for _, goSourceCode = range compilationUnit.sources {
 						contents, err := goSourceCode.Contents()
 						if err != nil {
-							return nil, nil, nil, err
+							return nil, nil, err
 						}
 
 						for _, importedPackage := range contents.importedPackages {
@@ -882,10 +882,9 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*library_t, []*dyn_library_t, 
 	}
 
 	var libIncludePaths = make([]*dir_t, len(imports))
-	var libs = make([]*library_t, len(imports))
 	var dynLibs = make([]*dyn_library_t, len(imports))
 	{
-		i, j, k := 0, 0, 0
+		i, j := 0, 0
 		for _, pkg_orNil := range imports {
 			if pkg_orNil != nil {
 				pkg := pkg_orNil
@@ -893,22 +892,18 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*library_t, []*dyn_library_t, 
 				libIncludePaths[i] = pkg.includePath
 				i++
 
-				libs[j] = pkg.lib
-				j++
-
 				if pkg.dynLib_orNil != nil {
-					dynLibs[k] = pkg.dynLib_orNil
-					k++
+					dynLibs[j] = pkg.dynLib_orNil
+					j++
 				}
 			}
 		}
 
 		libIncludePaths = libIncludePaths[0:i]
-		libs = libs[0:j]
-		dynLibs = dynLibs[0:k]
+		dynLibs = dynLibs[0:j]
 	}
 
-	return libIncludePaths, libs, dynLibs, nil
+	return libIncludePaths, dynLibs, nil
 }
 
 func (e *executable_t) UpdateFileSystemModel() {
@@ -951,9 +946,8 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 	defer func() { e.nowBuilding = false }()
 
 	var libIncludePaths []*dir_t
-	var libs []*library_t
 	var dynLibs []*dyn_library_t
-	libIncludePaths, libs, dynLibs, err = e.collectLibs()
+	libIncludePaths, dynLibs, err = e.collectLibs()
 	if err != nil {
 		return err
 	}
@@ -974,17 +968,6 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 			}
 
 			if src.Mtime() > mtime {
-				rebuild = true
-			}
-		}
-
-		for _, lib := range libs {
-			err = lib.Make()
-			if err != nil {
-				return err
-			}
-
-			if lib.Mtime() > mtime {
 				rebuild = true
 			}
 		}
@@ -1208,7 +1191,7 @@ func (e *executable_t) Uninstall() os.Error {
 	// Uninstall CGO dynamic libraries
 	{
 		var dynLibs []*dyn_library_t
-		_, _, dynLibs, err := e.collectLibs()
+		_, dynLibs, err := e.collectLibs()
 		if err != nil {
 			return err
 		}
