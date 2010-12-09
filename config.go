@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"exp/eval"
 	"fmt"
+	"go/token"
 	"io/ioutil"
 	"os"
 	pathutil "path"
@@ -61,7 +62,10 @@ func runScript(w *eval.World, path, sourceCode string) os.Error {
 	var err os.Error
 	var code eval.Code
 
-	code, err = w.Compile(sourceCode)
+	fileSet := token.NewFileSet()
+	fileSet.AddFile(path, fileSet.Base(), len(sourceCode))
+
+	code, err = w.Compile(fileSet, sourceCode)
 	if err != nil {
 		str := strings.Replace(err.String(), "input", path, 1)
 		return os.NewError(str)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/token"
 	"io"
 	"io/ioutil"
 	"os"
@@ -658,7 +659,7 @@ func parse_go_file_contents(filePath string, test bool) (*go_file_contents_t, os
 	}
 
 	var file *ast.File
-	file, err := parser.ParseFile(filePath, /*src*/ nil, mode)
+	file, err := parser.ParseFile(token.NewFileSet(), filePath, /*src*/ nil, mode)
 	if err != nil {
 		return nil, err
 	}
