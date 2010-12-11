@@ -99,7 +99,8 @@ func RemotePackage(importPaths, type, repository string, installCommand []string
     package. The value of 'installCommand' is passed to the 'exec' system call.
     By convention, the first element in this array of strings specifies
     the executable, while the rest of the elements are the executable's
-    arguments. The command will be executed in the top-level directory of the
+    arguments. The command will be executed in the top-level directory of
+    a local copy of the remote package.
 
     Example:
 
