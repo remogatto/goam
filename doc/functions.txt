@@ -1,0 +1,144 @@
+This file contains descriptions of functions that can be used
+in a GOAM configuration file. The content of a configuration file
+is Go code which is executed by a Go language interpreter.
+The interpreter will execute the Go code in sequential order.
+Since most of these functions are of a declarative nature (i.e: they
+are modifying Goam's internal data structures, instead of directly
+executing concrete actions), their execution order does not usually
+matter. If it is the case that the order does matter, it is explicitly
+mentioned in the function's description.
+
+The term "current directory" used below means the directory which contains
+the GOAM configuration file.
+
+A path cannot refer to parental directory. For example, the path "../../somefile"
+is illegal.
+
+
+func Package(path string)
+
+    Defines a package built from all *.go files in the current directory.
+    The 'path' specifies the import path of the package. For example,
+    if the path is "compress/zip", the import statement in a Go file which
+    wants to use it is "compress/zip", and the library's name is "zip.a".
+
+    There can be at most one Package definition per directory.
+
+
+func Executable(name, sources string)
+
+    Defines an executable. The 'name' specifies the name of the executable.
+    The parameter 'sources' is a non-empty space-separated list of Go files.
+    Each Go file is specified by its relative path in respect to the current
+    directory. References though the parental directory (e.g: "../file.go")
+    are forbidden. It is perfectly legal to refer files in sub-directories
+    of the current directory (e.g: "subdir/file.go").
+
+    The list of sources specifies the Go files from which to build
+    the executable.
+
+    A single GOAM configuration file can define multiple executables,
+    assuming their names are unique. There are no restrictions put on sharing
+    a single Go file among multiple executables.
+
+
+func InstallPackage()
+
+    Informs GOAM to install the package previously declared by calling function
+    'Package'. The function 'Package' has to be called before 'InstallPackage'.
+    The package will be installed into "${GOROOT}/pkg/${GOOS}_${GOARCH}".
+
+    There can be at most one call to 'InstallPackage' in a configuration file.
+
+
+func InstallExecutable(srcPath string)
+
+    Informs GOAM to install an executable. The parameter 'srcPath' is the
+    path of the executable in respect to the current directory. The executable
+    has to be first be defined by calling function 'Executable'. It is possible
+    to install an executable residing in a subdirectory of the current directory.
+    The executable will be installed into "${GOBIN}".
+
+
+func InstallDir(srcPath, dstPath string)
+
+    Informs GOAM to copy a whole directory during installation. The parameter
+    'srcPath' is the path of the directory in respect to the current directory.
+
+    Let 'dstRoot' mean "${GOROOT}/pkg/${GOOS}_${GOARCH}".
+    The parameter 'dstPath' is relative to 'dstRoot'.
+    Thus, the full destination path is (dstRoot + "/" + dstPath).
+
+    Examples:
+
+        InstallDir("dir1/dir2", ""):
+            Copy "dir2" to dstRoot.
+            A file "dir1/dir2/file1" will be installed as
+            (dstRoot + "/dir2/file1").
+
+        InstallDir("dir", "app_data"):
+            Copy "dir" to (dstRoot + "/app_data").
+            A file "dir/file1" will be installed as
+            (dstRoot + "/app_data/dir/file1").
+
+
+func RemotePackage(importPaths, type, repository string, installCommand []string)
+
+    Provides information about a remote package.
+
+    The parameter 'importPaths' is a space-separated list of import paths
+    resolved by installing the package.
+
+    The parameter 'type' is the type of the repository where the remote package
+    lives. The currently supported repository types are: "github".
+
+    The parameter 'repository' is the name of the remote repository. The exact
+    meaning of this parameter depends on the repository type.
+
+    The parameter 'installCommand' is the command responsible for installing the
+    package. The value of 'installCommand' is passed to the 'exec' system call.
+    By convention, the first element in this array of strings specifies
+    the executable, while the rest of the elements are the executable's
+    arguments. The command will be executed in the top-level directory of the
+
+    Example:
+
+        Assume we want to install the GitHub project PrettyTest. The homepage of
+        this Go package is [https://github.com/remogatto/prettytest]. This is
+        a Makefile based project. To install it, we need to run "make install".
+        The Go code to be added to a GOAM.conf file is:
+
+          makeInstall := make([]string, 2)
+          makeInstall[0] = "make"
+          makeInstall[1] = "install"
+          RemotePackage("prettytest", "github", "remogatto/prettytest",
+                        makeInstall)
+
+        If instead of a Makefile-based project, it would have been a Goam-base
+        project, we would need to use "goam install" instead of "make install".
+
+
+func IgnoreDir(path string)
+
+    Completely ignore the directory with the specified path.
+    Any files the directory might contain are invisible to GOAM.
+    It is however possible to use 'path' as the 1st argument of 'InstallDir'.
+
+
+func DisableGoFmt(path string)
+
+    Exclude the specified file from the set of files which are formatted
+    by "goam gofmt". Note that this is not required if the Go file lives
+    in a directory passed to 'IgnoreDir'.
+
+
+func MinCompilerVersion(version uint)
+
+    Enforces a constraint on the minimum version of the Go compiler.
+    The version is determined by passing "-V" to the compiler.
+
+    For example, in the following case the compiler version is 6870:
+
+        $ 8g -V
+        8g version 6870 release release.2010-12-08
+

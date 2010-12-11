@@ -300,11 +300,7 @@ func main() {
 
 	functionName := args[0]
 	if function, ok := functionTable[functionName]; ok {
-		if len(args)-1 < function.minArgs {
-			usage()
-			os.Exit(1)
-		}
-		if len(args)-1 > function.maxArgs {
+		if (len(args)-1 < function.minArgs) || (len(args)-1 > function.maxArgs) {
 			usage()
 			os.Exit(1)
 		}

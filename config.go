@@ -163,7 +163,7 @@ func wrapper_Package(t *eval.Thread, in []eval.Value, out []eval.Value) {
 var executable2sources = make(map[string][]string)
 var source2executable = make(map[string]string)
 
-// Signature: func Executable(name string, sources ...string)
+// Signature: func Executable(name string, sources string)
 func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	name := in[0].(eval.StringValue).Get(t)
 	_sources := in[1].(eval.StringValue).Get(t)
@@ -274,7 +274,7 @@ func wrapper_IgnoreDir(t *eval.Thread, in []eval.Value, out []eval.Value) {
 // This is a set, the values of this hash-map have no meaning.
 var disabledGoFmt = make(map[string]byte)
 
-// Signature: func DisableGoFmt(name, source string)
+// Signature: func DisableGoFmt(path string)
 func wrapper_DisableGoFmt(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	path := in[0].(eval.StringValue).Get(t)
 

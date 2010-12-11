@@ -1,0 +1,24 @@
+Usage: goam [OPTIONS] make
+
+Options:
+  -v=false: Verbose
+  -d=false: Print debugging messages
+  -t=false: Print timings pertaining executed commands
+  -dashboard=true: Report public packages at http://godashboard.appspot.com/package
+
+Description:
+  Builds all targets of the project, except tests and benchmarks.
+  The list of build targets (libraries and executables) can be viewed
+  by running "goam info".
+
+  If a target requires an external package and GOAM fails to find
+  the package locally, it will try to download the project providing
+  the package and install it. The URL from which to download such an
+  external package and the method of installation should be specified
+  in the top-level "GOAM.conf" configuration file.
+
+  All successfully installed external packages are reported to the Go
+  dashboard, unless this feature is turned off.
+
+Command chain:
+  goam make <-- goam install-deps

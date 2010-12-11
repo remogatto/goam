@@ -1,0 +1,13 @@
+Usage: goam [OPTIONS] gofmt
+
+Options:
+  -v=false: Verbose
+  -d=false: Print debugging messages
+  -t=false: Print timings pertaining executed commands
+
+Description:
+  Runs "gofmt" on all Go files in the project. A Go file can be excluded
+  from being formatted if it is specified in "GOAM.conf".
+
+Command chain:
+  goam gofmt

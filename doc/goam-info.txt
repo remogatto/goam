@@ -1,0 +1,13 @@
+Usage: goam [OPTIONS] info
+
+Options:
+  -v=false: Verbose
+  -d=false: Print debugging messages
+  -t=false: Print timings pertaining executed commands
+
+Description:
+  Prints information about a project by reading configuration files
+  and Makefiles in the current directory and its sub-directories.
+
+Command chain:
+  goam info

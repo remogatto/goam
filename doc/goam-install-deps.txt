@@ -1,0 +1,21 @@
+Usage: goam [OPTIONS] install-deps
+
+Options:
+  -v=false: Verbose
+  -d=false: Print debugging messages
+  -t=false: Print timings pertaining executed commands
+  -dashboard=true: Report public packages at http://godashboard.appspot.com/package
+
+Description:
+  Downloads and installs all external packages required by the project.
+  This applies only to external packages which GOAM fails to find locally.
+
+  The URL from which to download an external package and the method
+  of installation should be specified in the top-level "GOAM.conf"
+  configuration file.
+
+  All successfully installed external packages are reported to the Go
+  dashboard, unless this feature is turned off.
+
+Command chain:
+  goam install-deps

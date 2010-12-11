@@ -1,0 +1,17 @@
+Usage: goam [OPTIONS] test [PATTERN]
+
+Options:
+  -v=false: Verbose
+  -d=false: Print debugging messages
+  -t=false: Print timings pertaining executed commands
+  -dashboard=true: Report public packages at http://godashboard.appspot.com/package
+
+Description:
+  Runs all Go tests with names matching the PATTERN.
+  An empty pattern means to run all tests.
+
+  For further information, see documentation of the "gotest" tool
+  found in the standard Go distribution.
+
+Command chain:
+  goam test <-- goam make-tests <-- goam install-deps
