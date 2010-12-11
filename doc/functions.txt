@@ -114,7 +114,7 @@ func RemotePackage(importPaths, type, repository string, installCommand []string
           RemotePackage("prettytest", "github", "remogatto/prettytest",
                         makeInstall)
 
-        If instead of a Makefile-based project, it would have been a Goam-base
+        If instead of a Makefile-based project, it would have been a Goam-based
         project, we would need to use "goam install" instead of "make install".
 
 
