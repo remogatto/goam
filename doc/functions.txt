@@ -55,7 +55,7 @@ func InstallExecutable(srcPath string)
 
     Informs GOAM to install an executable. The parameter 'srcPath' is the
     path of the executable in respect to the current directory. The executable
-    has to be first be defined by calling function 'Executable'. It is possible
+    has to be first defined by calling function 'Executable'. It is possible
     to install an executable residing in a subdirectory of the current directory.
     The executable will be installed into "${GOBIN}".
 
