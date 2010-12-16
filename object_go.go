@@ -629,7 +629,7 @@ type ast_visitor_t struct {
 	benchmarks vector.StringVector
 }
 
-func (v *ast_visitor_t) Visit(node interface{}) ast.Visitor {
+func (v *ast_visitor_t) Visit(node ast.Node) ast.Visitor {
 	if importSpec, isImportSpec := node.(*ast.ImportSpec); isImportSpec {
 		v.importSpecs.Push(importSpec)
 		return nil
