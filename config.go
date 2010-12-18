@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	pathutil "path"
-	"strconv"
 	"strings"
 	"sync"
 )
@@ -307,23 +306,9 @@ func wrapper_MinCompilerVersion(t *eval.Thread, in []eval.Value, out []eval.Valu
 		println("(read config) Go compiler min version:", minVersion)
 	}
 
-	args := []string{goCompiler_exe.name, "-V"}
-	stdout, _, err := goCompiler_exe.run(args, /*dir*/ "", /*in*/ "", /*mergeStdoutAndStderr*/ true)
+	version, err := getGoCompilerVersion()
 	if err != nil {
-		t.Abort(os.NewError("failed to determine Go compiler version: " + err.String()))
-		return
-	}
-
-	stdout = strings.TrimSpace(stdout)
-	var stdout_split []string = strings.Split(stdout, " ", -1)
-	if len(stdout_split) < 3 {
-		t.Abort(os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\""))
-		return
-	}
-
-	version, err := strconv.Atoui(strings.TrimRight(stdout_split[2], "+"))
-	if err != nil {
-		t.Abort(os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\""))
+		t.Abort(err)
 		return
 	}
 

@@ -7,8 +7,8 @@ import (
 
 
 type package_resolution_t struct {
-	lib          *library_t
-	includePath  *dir_t
+	lib         *library_t
+	includePath *dir_t
 }
 
 var importPathResolutionTable = make(map[string]*package_resolution_t)
@@ -31,8 +31,8 @@ func mapImportPath(importPath string, lib *library_t, includePath *dir_t, test b
 	}
 
 	table[importPath] = &package_resolution_t{
-		lib:          lib,
-		includePath:  includePath,
+		lib:         lib,
+		includePath: includePath,
 	}
 
 	return nil

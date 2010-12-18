@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strconv"
+	"strings"
 )
 
 // The extension of files created by the Go compiler (.5, .6, .8)
@@ -59,4 +61,36 @@ func init() {
 	goCompiler_exe = &Executable{name: goCompilerName}
 	goArchiver_exe = &Executable{name: "gopack"}
 	goLinker_exe = &Executable{name: goLinkerName}
+}
+
+
+var goCompilerVersion *uint = nil
+
+// Requires Go release.2010-12-15.1
+const min_compiler_version_for_cgo = 6980
+
+func getGoCompilerVersion() (uint, os.Error) {
+	if goCompilerVersion == nil {
+		args := []string{goCompiler_exe.name, "-V"}
+		stdout, _, err := goCompiler_exe.run(args, /*dir*/ "", /*in*/ "", /*mergeStdoutAndStderr*/ true)
+		if err != nil {
+			return 0, os.NewError("failed to determine Go compiler version: " + err.String())
+		}
+
+		stdout = strings.TrimSpace(stdout)
+		var stdout_split []string = strings.Split(stdout, " ", -1)
+		if len(stdout_split) < 3 {
+			return 0, os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\"")
+		}
+
+		version, err := strconv.Atoui(strings.TrimRight(stdout_split[2], "+"))
+		if err != nil {
+			return 0, os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\"")
+		}
+
+		goCompilerVersion = new(uint)
+		*goCompilerVersion = version
+	}
+
+	return *goCompilerVersion, nil
 }

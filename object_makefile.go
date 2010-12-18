@@ -335,6 +335,19 @@ func read_makefile_contents(path, dir string) (*makefile_contents_t, os.Error) {
 			}
 		}
 		goFiles = goFiles[0:j]
+
+		// Check the minimum compiler version
+		compilerVersion, err := getGoCompilerVersion()
+		if err != nil {
+			return nil, err
+		}
+		if compilerVersion < min_compiler_version_for_cgo {
+			msg := fmt.Sprintf("The makefile \"%s\" is using CGO."+
+				" Found Go compiler has version %d."+
+				" Minimum version supported by GOAM is %d.",
+				path, compilerVersion, min_compiler_version_for_cgo)
+			return nil, os.NewError(msg)
+		}
 	}
 
 	if *flag_debug {
