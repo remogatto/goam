@@ -151,27 +151,8 @@ func (m *makefile_t) InferObjects(updateTests bool) os.Error {
 			return err
 		}
 
-		// cgo --> expect DYNAMIC_LIBRARY.so
-		var dynLib_orNil *dyn_library_t = nil
-		if m.contents.cgo {
-			dynLibName := m.contents.getCGoDynamicLibraryName()
-
-			dynLib, err := m.parent.getOrCreate_dynLibrary(dynLibName)
-			if err != nil {
-				return err
-			}
-
-			// Register 'm' with the 'dynLib'
-			err = dynLib.addMakefile(m)
-			if err != nil {
-				return err
-			}
-
-			dynLib_orNil = dynLib
-		}
-
 		// Add 'lib' to the package resolution table
-		err = mapImportPath(contents.targ, lib, objDir, dynLib_orNil, /*test*/ false)
+		err = mapImportPath(contents.targ, lib, objDir, /*test*/ false)
 		if err != nil {
 			return err
 		}
@@ -218,12 +199,7 @@ func (m *makefile_t) Make() os.Error {
 		}
 	}
 
-	var args []string
-	if !m.contents.cgo {
-		args = []string{make_exe.name, "-f", m.name}
-	} else {
-		args = []string{make_exe.name, "-f", m.name, "all", m.contents.getCGoDynamicLibraryName()}
-	}
+	args := []string{make_exe.name, "-f", m.name}
 
 	err := make_exe.runSimply(args, /*dir*/ m.parent.path, /*dontPrint*/ false)
 	if err != nil {
@@ -402,12 +378,4 @@ func read_makefile_contents(path, dir string) (*makefile_contents_t, os.Error) {
 	}
 
 	return contents, nil
-}
-
-func (m *makefile_contents_t) getCGoDynamicLibraryName() string {
-	if !m.cgo {
-		panic("no cgo")
-	}
-
-	return "cgo_" + strings.Replace(m.targ, "/", "_", -1) + ".so"
 }

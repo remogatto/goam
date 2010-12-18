@@ -53,13 +53,6 @@ func (i *install_package_t) Install(root *dir_t) os.Error {
 		return err
 	}
 
-	if pkg.dynLib_orNil != nil {
-		err = pkg.dynLib_orNil.Install()
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -72,13 +65,6 @@ func (i *install_package_t) Uninstall(root *dir_t) os.Error {
 	err = pkg.lib.Uninstall(i.importPath)
 	if err != nil {
 		return err
-	}
-
-	if pkg.dynLib_orNil != nil {
-		err = pkg.dynLib_orNil.Uninstall()
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil

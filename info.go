@@ -11,9 +11,6 @@ type info_t struct {
 	// Set of libraries. (The values of the map have no meaning.)
 	libs map[*library_t]byte
 
-	// Set of dynamic libraries. (The values of the map have no meaning.)
-	dynLibs map[*dyn_library_t]byte
-
 	// Set of executables. (The values of the map have no meaning.)
 	executables map[*executable_t]byte
 
@@ -24,7 +21,6 @@ type info_t struct {
 func new_info() *info_t {
 	return &info_t{
 		libs:        make(map[*library_t]byte),
-		dynLibs:     make(map[*dyn_library_t]byte),
 		executables: make(map[*executable_t]byte),
 		tests:       make(map[*executable_t]byte),
 	}
@@ -84,36 +80,6 @@ func (info *info_t) Print(w io.Writer) {
 				haveEmptyLine = true
 			}
 		}
-	}
-
-	if len(info.dynLibs) > 0 {
-		if !haveEmptyLine {
-			fmt.Fprintf(w, "\n")
-		}
-		fmt.Fprintf(w, "Dynamic libraries:\n")
-
-		libs_byPath := make(map[string]*dyn_library_t)
-		paths := make([]string, len(info.dynLibs))
-		i := 0
-		for lib, _ := range info.dynLibs {
-			libs_byPath[lib.path] = lib
-			paths[i] = lib.path
-			i++
-		}
-
-		sort.SortStrings(paths)
-
-		for _, path := range paths {
-			lib := libs_byPath[path]
-
-			fmt.Fprintf(w, "    %s", path)
-			if lib.makefile_orNil != nil {
-				fmt.Fprintf(w, " (Makefile)")
-			}
-			fmt.Fprintf(w, "\n")
-		}
-
-		haveEmptyLine = false
 	}
 
 	printExecutables(w, "Executables", /*allowVerbose*/ true, info.executables, &haveEmptyLine)

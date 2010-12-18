@@ -9,13 +9,12 @@ import (
 type package_resolution_t struct {
 	lib          *library_t
 	includePath  *dir_t
-	dynLib_orNil *dyn_library_t // CGO dynamic library
 }
 
 var importPathResolutionTable = make(map[string]*package_resolution_t)
 var importPathResolutionTable_test = make(map[string]*package_resolution_t)
 
-func mapImportPath(importPath string, lib *library_t, includePath *dir_t, dynLib_orNil *dyn_library_t, test bool) os.Error {
+func mapImportPath(importPath string, lib *library_t, includePath *dir_t, test bool) os.Error {
 	var table map[string]*package_resolution_t
 	if !test {
 		table = importPathResolutionTable
@@ -34,7 +33,6 @@ func mapImportPath(importPath string, lib *library_t, includePath *dir_t, dynLib
 	table[importPath] = &package_resolution_t{
 		lib:          lib,
 		includePath:  includePath,
-		dynLib_orNil: dynLib_orNil,
 	}
 
 	return nil

@@ -170,13 +170,6 @@ func identifyFile(path string, fi *os.FileInfo, parent *dir_t) (object_t, os.Err
 		return new_library(entry, parent), nil
 	}
 
-	if strings.HasSuffix(fi.Name, ".so") {
-		if *flag_debug {
-			println("dynamic library:", path)
-		}
-		return new_dyn_library(entry, parent), nil
-	}
-
 	if (fi.Permission() & 0100) != 0 {
 		if *flag_debug {
 			println("executable:", path)

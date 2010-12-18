@@ -182,7 +182,7 @@ func inferObjects(f go_source_code_t, test bool) os.Error {
 			lib.addCompilationUnit(compilationUnit)
 
 			// Add 'lib' to the package resolution table
-			err = mapImportPath(target, lib, objDir, nil, test)
+			err = mapImportPath(target, lib, objDir, test)
 			if err != nil {
 				return err
 			}
@@ -267,9 +267,7 @@ func (f *go_file_t) RunTests(testPattern, benchPattern string) os.Error {
 
 func (f *go_file_t) Clean() os.Error {
 	remove := false
-	if strings.HasPrefix(f.name, "_cgo_") || strings.HasSuffix(f.name, ".cgo1.go") {
-		remove = true
-	} else if f.name == "_testmain.go" {
+	if f.name == "_testmain.go" {
 		remove = true
 	}
 

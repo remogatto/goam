@@ -198,26 +198,6 @@ func (d *dir_t) getOrCreate_library(name string) (*library_t, os.Error) {
 	return lib, nil
 }
 
-func (d *dir_t) getOrCreate_dynLibrary(name string) (*dyn_library_t, os.Error) {
-	var lib *dyn_library_t
-
-	var _lib object_t = d.getObject_orNil([]string{name})
-	if _lib == nil {
-		// Create a new instance of 'library_t'
-		path := pathutil.Join(d.path, name)
-		lib = new_dyn_library(new_nonexistent_entry(name, path), /*parent*/ d)
-		d.add(lib)
-	} else {
-		var isDynLib bool
-		lib, isDynLib = _lib.(*dyn_library_t)
-		if !isDynLib {
-			return nil, os.NewError("file \"" + _lib.Path() + "\" was expected to be a dynamic library")
-		}
-	}
-
-	return lib, nil
-}
-
 func (d *dir_t) getOrCreate_executable(name string) (*executable_t, os.Error) {
 	var exe *executable_t
 

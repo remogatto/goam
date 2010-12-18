@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"container/vector"
 	"fmt"
 	"io"
@@ -74,15 +73,6 @@ type library_t struct {
 	sources        []*compilation_unit_t
 	makefile_orNil *makefile_t
 	partOfATest    bool
-	built          bool
-	nowBuilding    bool
-}
-
-// Represents a dynamic library (FILE.so)
-type dyn_library_t struct {
-	entry_t
-	parent         *dir_t
-	makefile_orNil *makefile_t
 	built          bool
 	nowBuilding    bool
 }
@@ -326,8 +316,6 @@ func (u *compilation_unit_t) Make() os.Error {
 					libIncludePaths[pkg.includePath.path] = 0
 
 					if pkg.lib.Mtime() > mtime {
-						rebuild = true
-					} else if (pkg.dynLib_orNil != nil) && (pkg.dynLib_orNil.Mtime() > mtime) {
 						rebuild = true
 					}
 				}
@@ -640,147 +628,6 @@ func (l *library_t) GoFmt(files *vector.StringVector) os.Error {
 }
 
 
-// =============
-// dyn_library_t
-// =============
-
-func new_dyn_library(entry entry_t, parent *dir_t) *dyn_library_t {
-	l := &dyn_library_t{
-		entry_t: entry,
-		parent:  parent,
-	}
-	newObjects[l] = 0
-	return l
-}
-
-func (l *dyn_library_t) addMakefile(m *makefile_t) os.Error {
-	if l.makefile_orNil != nil {
-		return os.NewError("library \"" + l.path + "\" is a product of more than one Makefile")
-	}
-
-	l.makefile_orNil = m
-	return nil
-}
-
-func (l *dyn_library_t) UpdateFileSystemModel() {
-	l.UpdateFileInfo()
-}
-
-func (l *dyn_library_t) InferObjects(updateTests bool) os.Error {
-	return nil
-}
-
-func (l *dyn_library_t) PrintDependencies(w io.Writer) {
-	if l.makefile_orNil != nil {
-		fmt.Fprintf(w, "%s <-- makefile \"%s\"\n", l.path, l.makefile_orNil.path)
-	}
-}
-
-func (l *dyn_library_t) Info(info *info_t) {
-	if l.makefile_orNil != nil {
-		info.dynLibs[l] = 0
-	}
-}
-
-func (l *dyn_library_t) Make() os.Error {
-	if l.built {
-		return nil
-	}
-
-	if l.nowBuilding {
-		return os.NewError("circular dependency involving \"" + l.path + "\"")
-	}
-	l.nowBuilding = true
-	defer func() { l.nowBuilding = false }()
-
-	rebuild := false
-	if !l.exists {
-		rebuild = true
-	}
-
-	if rebuild {
-		if l.makefile_orNil != nil {
-			err := l.makefile_orNil.Make()
-			if err != nil {
-				return err
-			}
-
-			if !l.exists {
-				return os.NewError("failed to build \"" + l.path + "\"")
-			}
-		} else {
-			return os.NewError("don't know how to build \"" + l.path + "\"")
-		}
-	}
-
-	l.built = true
-	return nil
-}
-
-func (l *dyn_library_t) MakeTests() os.Error {
-	return nil
-}
-
-func (l *dyn_library_t) RunTests(testPattern, benchPattern string) os.Error {
-	return nil
-}
-
-func (l *dyn_library_t) Clean() os.Error {
-	var err os.Error
-	if l.exists && (l.makefile_orNil != nil) {
-		if *flag_debug {
-			println("remove:", l.path)
-		}
-		err = os.Remove(l.path)
-		if err == nil {
-			l.exists = false
-		}
-	} else {
-		err = nil
-	}
-
-	return err
-}
-
-func (l *dyn_library_t) Install() os.Error {
-	err := l.Make()
-	if err != nil {
-		return err
-	}
-
-	installPath := pathutil.Join(libInstallRoot, l.name)
-
-	args := []string{cp_exe.name, "-a", l.path, installPath}
-	err = cp_exe.runSimply(args, /*dir*/ "", /*dontPrint*/ false)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (l *dyn_library_t) Uninstall() os.Error {
-	installPath := pathutil.Join(libInstallRoot, l.name)
-
-	if fileExists(installPath) {
-		if *flag_debug {
-			println("uninstall:", installPath)
-		}
-
-		err := os.Remove(installPath)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (l *dyn_library_t) GoFmt(files *vector.StringVector) os.Error {
-	return nil
-}
-
-
 // ============
 // executable_t
 // ============
@@ -815,7 +662,7 @@ func (e *executable_t) addMakefile(m *makefile_t) os.Error {
 	return nil
 }
 
-func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
+func (e *executable_t) collectLibs() ([]*dir_t, os.Error) {
 	var imports = make(map[string]*package_resolution_t)
 
 	// The set of import statements to process
@@ -828,7 +675,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
 		for _, goSourceCode = range compilationUnit.sources {
 			contents, err := goSourceCode.Contents()
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			for _, importedPackage := range contents.importedPackages {
@@ -845,7 +692,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
 			test := (importPath == e.testImportPath_orEmpty)
 			pkg_orNil, err := resolvePackage(importPath, test)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			imports[importPath] = pkg_orNil
@@ -860,7 +707,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
 					for _, goSourceCode = range compilationUnit.sources {
 						contents, err := goSourceCode.Contents()
 						if err != nil {
-							return nil, nil, err
+							return nil, err
 						}
 
 						for _, importedPackage := range contents.importedPackages {
@@ -882,28 +729,21 @@ func (e *executable_t) collectLibs() ([]*dir_t, []*dyn_library_t, os.Error) {
 	}
 
 	var libIncludePaths = make([]*dir_t, len(imports))
-	var dynLibs = make([]*dyn_library_t, len(imports))
 	{
-		i, j := 0, 0
+		i := 0
 		for _, pkg_orNil := range imports {
 			if pkg_orNil != nil {
 				pkg := pkg_orNil
 
 				libIncludePaths[i] = pkg.includePath
 				i++
-
-				if pkg.dynLib_orNil != nil {
-					dynLibs[j] = pkg.dynLib_orNil
-					j++
-				}
 			}
 		}
 
 		libIncludePaths = libIncludePaths[0:i]
-		dynLibs = dynLibs[0:j]
 	}
 
-	return libIncludePaths, dynLibs, nil
+	return libIncludePaths, nil
 }
 
 func (e *executable_t) UpdateFileSystemModel() {
@@ -946,8 +786,7 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 	defer func() { e.nowBuilding = false }()
 
 	var libIncludePaths []*dir_t
-	var dynLibs []*dyn_library_t
-	libIncludePaths, dynLibs, err = e.collectLibs()
+	libIncludePaths, err = e.collectLibs()
 	if err != nil {
 		return err
 	}
@@ -971,17 +810,6 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 				rebuild = true
 			}
 		}
-
-		for _, dynLib := range dynLibs {
-			err = dynLib.Make()
-			if err != nil {
-				return err
-			}
-
-			if dynLib.Mtime() > mtime {
-				rebuild = true
-			}
-		}
 	}
 
 	if rebuild || installMode {
@@ -991,36 +819,7 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 				return err
 			}
 
-			var rpath string
-			if len(dynLibs) > 0 {
-				var buf bytes.Buffer
-				first := true
-
-				if !installMode {
-					workDir, err := os.Getwd()
-					if err != nil {
-						return err
-					}
-
-					for _, dynLib := range dynLibs {
-						if !first {
-							buf.WriteString(":")
-						}
-						buf.WriteString(pathutil.Join(workDir, dynLib.parent.path))
-						first = false
-					}
-				}
-
-				if !first {
-					buf.WriteString(":")
-				}
-				buf.WriteString(libInstallRoot)
-				first = false
-
-				rpath = buf.String()
-			}
-
-			numArgs := 3 + 2*len(libIncludePaths) + 2 + len(e.sources)
+			numArgs := 3 + 2*len(libIncludePaths) + len(e.sources)
 			var args = make([]string, numArgs)
 			{
 				var target string
@@ -1039,11 +838,6 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 					args[i+1] = incPath.path
 					i += 2
 				}
-				if len(rpath) > 0 {
-					args[i+0] = "-r"
-					args[i+1] = rpath
-					i += 2
-				}
 				for _, src := range e.sources {
 					args[i] = src.Path()
 					i++
@@ -1060,14 +854,6 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 				e.UpdateFileInfo()
 				if !e.exists {
 					return os.NewError("failed to build \"" + e.path + "\"")
-				}
-			} else {
-				// Install CGO dynamic libraries
-				for _, dynLib := range dynLibs {
-					err = dynLib.Install()
-					if err != nil {
-						return err
-					}
 				}
 			}
 		} else {
@@ -1185,22 +971,6 @@ func (e *executable_t) Uninstall() os.Error {
 		err := os.Remove(installPath)
 		if err != nil {
 			return err
-		}
-	}
-
-	// Uninstall CGO dynamic libraries
-	{
-		var dynLibs []*dyn_library_t
-		_, dynLibs, err := e.collectLibs()
-		if err != nil {
-			return err
-		}
-
-		for _, dynLib := range dynLibs {
-			err = dynLib.Uninstall()
-			if err != nil {
-				return err
-			}
 		}
 	}
 
