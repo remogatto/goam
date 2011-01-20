@@ -29,8 +29,8 @@ func (t *TaskResourceUsage) TotalTime() int64 {
 	return t.userTime + t.systemTime
 }
 
-func (t *TaskResourceUsage) AverageTime() float {
-	return float(t.TotalTime()) / float(t.numInvocations)
+func (t *TaskResourceUsage) AverageTime() float64 {
+	return float64(t.TotalTime()) / float64(t.numInvocations)
 }
 
 var taskStats = make(map[string]*TaskResourceUsage)
@@ -64,7 +64,7 @@ func addSelf() {
 	}
 
 	taskStats["(self.gc)"] = &TaskResourceUsage{
-		userTime:         int64(runtime.MemStats.PauseNs),
+		userTime:         int64(runtime.MemStats.PauseTotalNs),
 		systemTime:       0,
 		numInvocations:   int(runtime.MemStats.NumGC),
 		dontPrintAverage: true,
@@ -97,7 +97,7 @@ func printTimings(out *os.File) {
 			buf.WriteString(" ")
 		}
 		taskRUsage := taskStats[name]
-		fmt.Fprintf(&buf, " %.3f secs", float(taskRUsage.TotalTime())/1e9)
+		fmt.Fprintf(&buf, " %.3f secs", float64(taskRUsage.TotalTime())/1e9)
 		if taskRUsage.numInvocations >= 2 {
 			if !taskRUsage.dontPrintAverage {
 				fmt.Fprintf(&buf, " (%d invocations, %.3f secs per invocation)",
