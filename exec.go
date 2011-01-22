@@ -281,7 +281,7 @@ func (e *Executable) run_lowLevel(argv []string, dir string, flags RunFlags) os.
 		addResourceUsage(e.name, waitMsg.Rusage)
 	}
 	if !waitMsg.Exited() {
-		return os.NewError("unable to obtain the exit status of \"" + e.name + "%s\"")
+		return os.NewError(fmt.Sprintf("unable to obtain the exit status of \"%s\"", e.name))
 	}
 	if waitMsg.ExitStatus() != 0 {
 		var errMsg string
