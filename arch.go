@@ -85,6 +85,9 @@ func getGoCompilerVersion() (uint, os.Error) {
 		}
 
 		version, err := strconv.Atoui(strings.TrimRight(stdout_split[2], "+"))
+		if (err != nil) && (len(stdout_split) >= 4) {
+			version, err = strconv.Atoui(strings.TrimRight(stdout_split[3], "+"))
+		}
 		if err != nil {
 			return 0, os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\"")
 		}
