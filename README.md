@@ -10,16 +10,19 @@ Alternative build tools can be found at
 
 # Main features
 
+## Configuration
 * Small mostly-declarative configuration files
 * Configuration file contains Go source code
 * No configuration file is required in the presence of a standard Go Makefile
 
+## Project structure
 * Information can be displayed without building the project
 * Support for multiple executables in one directory
 * Libraries can be private to a project
 * Installation and uninstallation
 * Download and installation of dependencies (only supports GitHub right now)
 
+## Integration with other tools
 * Makefile support
 * CGO support (but only via Makefile)
 * gotest support
