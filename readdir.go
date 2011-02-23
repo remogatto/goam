@@ -50,6 +50,7 @@ func readDir_internal(dir *dir_t) os.Error {
 
 	numObjects := 0
 	numSubdirs := 0
+	numTemporarySubdirs := 0
 	for i := 0; i < listSize; i++ {
 		var entry *os.FileInfo = &list[i]
 
@@ -82,6 +83,9 @@ func readDir_internal(dir *dir_t) os.Error {
 			if dir, isDir := object.(*dir_t); isDir {
 				subdirs[numSubdirs] = dir
 				numSubdirs++
+				if dir.isTemporary() {
+					numTemporarySubdirs++
+				}
 			}
 		}
 	}
@@ -93,8 +97,8 @@ func readDir_internal(dir *dir_t) os.Error {
 
 	if dir.parent_orNil == nil {
 		// The presence of sub-directories requires a config file or a Makefile
-		if (numSubdirs > 0) && (dir.config_orNil == nil) && (dir.makefile_orNil == nil) {
-			return os.NewError("the root directory has sub-directories," +
+		if ((numSubdirs-numTemporarySubdirs) > 0) && (dir.config_orNil == nil) && (dir.makefile_orNil == nil) {
+			return os.NewError("the root directory has one or more user sub-directories," +
 				" therefore it requires a " + configFileName + " file or a Makefile")
 		}
 	}

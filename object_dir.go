@@ -254,9 +254,12 @@ func (d *dir_t) PrintDependencies(w io.Writer) {
 	}
 }
 
+func (d *dir_t) isTemporary() bool {
+	return (d.name == "_obj") || (d.name == "_test")
+}
+
 func (d *dir_t) shouldRemove() bool {
-	switch d.name {
-	case "_obj", "_test":
+	if d.isTemporary() {
 		return true
 	}
 
