@@ -912,10 +912,10 @@ func (e *executable_t) RunTests(testPattern, benchPattern string) os.Error {
 		args := make([]string, 1, 3)
 		args[0] = exe.name
 		if len(testPattern) > 0 {
-			args = append(args, "-match="+testPattern)
+			args = append(args, "-test.run="+testPattern)
 		}
 		if len(benchPattern) > 0 {
-			args = append(args, "-benchmarks="+benchPattern)
+			args = append(args, "-test.bench="+benchPattern)
 		}
 
 		err = exe.runSimply(args, /*dir*/ e.parent.path, /*dontPrint*/ false)
