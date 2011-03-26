@@ -261,8 +261,8 @@ func (f *go_file_t) MakeTests() os.Error {
 	return nil
 }
 
-func (f *go_file_t) RunTests(testPattern, benchPattern string) os.Error {
-	return nil
+func (f *go_file_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+	return
 }
 
 func (f *go_file_t) Clean() os.Error {
@@ -364,8 +364,8 @@ func (t *go_test_t) MakeTests() os.Error {
 	return nil
 }
 
-func (t *go_test_t) RunTests(testPattern, benchPattern string) os.Error {
-	return nil
+func (t *go_test_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+	return
 }
 
 func (t *go_test_t) Clean() os.Error {
@@ -588,8 +588,8 @@ func (t *go_testMain_t) MakeTests() os.Error {
 	return nil
 }
 
-func (t *go_testMain_t) RunTests(testPattern, benchPattern string) os.Error {
-	return nil
+func (t *go_testMain_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+	return
 }
 
 func (t *go_testMain_t) Clean() os.Error {

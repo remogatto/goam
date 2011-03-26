@@ -245,8 +245,11 @@ func (m *makefile_t) MakeTests() os.Error {
 	return nil
 }
 
-func (m *makefile_t) RunTests(testPattern, benchPattern string) os.Error {
-	return m.MakeTests()
+func (m *makefile_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+	err := m.MakeTests()
+	if err != nil {
+		*errors = append(*errors, err)
+	}
 }
 
 func (m *makefile_t) Clean() os.Error {

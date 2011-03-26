@@ -338,29 +338,19 @@ func (d *dir_t) MakeTests() os.Error {
 	return nil
 }
 
-func (d *dir_t) RunTests(testPattern, benchPattern string) os.Error {
-	var err os.Error
-
+func (d *dir_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
 	haveMakefile := (d.makefile_orNil != nil)
 	if haveMakefile {
 		if d.numTestFiles > 0 {
 			// Execute "make test"
-			err = d.makefile_orNil.RunTests(testPattern, benchPattern)
-			if err != nil {
-				return err
-			}
+			d.makefile_orNil.RunTests(testPattern, benchPattern, errors)
 		}
 	} else {
 		// Call 'RunTests()' on all objects
 		for _, object := range d.objects {
-			err = object.RunTests(testPattern, benchPattern)
-			if err != nil {
-				return err
-			}
+			object.RunTests(testPattern, benchPattern, errors)
 		}
 	}
-
-	return nil
 }
 
 func (d *dir_t) Clean() os.Error {

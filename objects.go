@@ -26,7 +26,7 @@ type object_t interface {
 	Info(info *info_t)
 	Make() os.Error
 	MakeTests() os.Error
-	RunTests(testPattern, benchPattern string) os.Error
+	RunTests(testPattern, benchPattern string, errors *[]os.Error)
 	Clean() os.Error
 	GoFmt(files *vector.StringVector) os.Error
 }
@@ -198,8 +198,8 @@ func (f *config_file_t) MakeTests() os.Error {
 	return nil
 }
 
-func (f *config_file_t) RunTests(testPattern, benchPattern string) os.Error {
-	return nil
+func (f *config_file_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+	return
 }
 
 func (f *config_file_t) Clean() os.Error {
@@ -376,8 +376,8 @@ func (u *compilation_unit_t) MakeTests() os.Error {
 	return nil
 }
 
-func (u *compilation_unit_t) RunTests(testPattern, benchPattern string) os.Error {
-	return nil
+func (u *compilation_unit_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+	return
 }
 
 func (u *compilation_unit_t) Clean() os.Error {
@@ -552,8 +552,8 @@ func (l *library_t) MakeTests() os.Error {
 	return nil
 }
 
-func (l *library_t) RunTests(testPattern, benchPattern string) os.Error {
-	return nil
+func (l *library_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+	return
 }
 
 func (l *library_t) Clean() os.Error {
@@ -902,11 +902,9 @@ func (e *executable_t) MakeTests() os.Error {
 	return nil
 }
 
-func (e *executable_t) RunTests(testPattern, benchPattern string) os.Error {
+func (e *executable_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
 	// If 'e' is a test
 	if len(e.testImportPath_orEmpty) > 0 {
-		var err os.Error
-
 		exe := &Executable{name: "./" + e.name, noLookup: true}
 
 		args := make([]string, 1, 3)
@@ -918,13 +916,11 @@ func (e *executable_t) RunTests(testPattern, benchPattern string) os.Error {
 			args = append(args, "-test.bench="+benchPattern)
 		}
 
-		err = exe.runSimply(args, /*dir*/ e.parent.path, /*dontPrint*/ false)
+		err := exe.runSimply(args, /*dir*/ e.parent.path, /*dontPrint*/ false)
 		if err != nil {
-			return err
+			*errors = append(*errors, err)
 		}
 	}
-
-	return nil
 }
 
 func (e *executable_t) Clean() os.Error {

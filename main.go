@@ -139,9 +139,13 @@ func runTestsAndBenchmarks(testPattern, benchPattern string) os.Error {
 		return err
 	}
 
-	err = rootObject.RunTests(testPattern, benchPattern)
-	if err != nil {
-		return err
+	var errors []os.Error
+	rootObject.RunTests(testPattern, benchPattern, &errors)
+	if len(errors) > 0 {
+		for _, err = range errors {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+		}
+		return os.NewError("some tests have failed")
 	}
 
 	return nil
