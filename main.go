@@ -56,6 +56,11 @@ func boot(updateTests bool) (*dir_t, os.Error) {
 		}
 	}
 
+	err = check_executable2sources(rootObject)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, remotePackage := range remotePackages {
 		err = remotePackage.Check()
 		if err != nil {

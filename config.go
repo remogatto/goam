@@ -213,6 +213,11 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 				return
 			}
 
+			if !fileExists(source) {
+				t.Abort(os.NewError("executable \"" + name + "\" depends on non-existent file \"" + source + "\""))
+				return
+			}
+
 			sources[i] = source
 		}
 	}
@@ -225,6 +230,37 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	for _, source := range sources {
 		source2executable[source] = name
 	}
+}
+
+// Checks the existence and contents of Go source code files
+// associated with all executables in 'executable2sources'
+func check_executable2sources(root *dir_t) os.Error {
+	for executable, sources := range executable2sources {
+		for _, source := range sources {
+			var object object_t = root.getObject_orNil(strings.Split(source, "/", -1))
+
+			if object == nil {
+				return os.NewError("executable \"" + executable + "\" depends on non-existent object \"" + source + "\"")
+			}
+
+			if src, ok := object.(go_source_code_t); ok {
+				contents, err := src.Contents()
+				if err != nil {
+					return err
+				}
+
+				if contents.packageName != "main" {
+					return os.NewError("file \"" + source + "\" (associated with executable \"" + executable + "\") " +
+						"does not belong to package \"main\"")
+				}
+			} else {
+				return os.NewError("executable \"" + executable + "\" depends on \"" + source + "\", " +
+					"but \"" + source + "\" is not a Go source code file")
+			}
+		}
+	}
+
+	return nil
 }
 
 

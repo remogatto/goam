@@ -97,7 +97,7 @@ func readDir_internal(dir *dir_t) os.Error {
 
 	if dir.parent_orNil == nil {
 		// The presence of sub-directories requires a config file or a Makefile
-		if ((numSubdirs-numTemporarySubdirs) > 0) && (dir.config_orNil == nil) && (dir.makefile_orNil == nil) {
+		if ((numSubdirs - numTemporarySubdirs) > 0) && (dir.config_orNil == nil) && (dir.makefile_orNil == nil) {
 			return os.NewError("the root directory has one or more user sub-directories," +
 				" therefore it requires a " + configFileName + " file or a Makefile")
 		}
