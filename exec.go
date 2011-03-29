@@ -57,6 +57,8 @@ func addSelf() {
 	taskStats["(self)"] = nil, false
 	taskStats["(self.gc)"] = nil, false
 
+	// Enclose the following 5 lines in a comment
+	// if the compiler is unable to find 'syscall.Getrusage'
 	var usage syscall.Rusage
 	errno := syscall.Getrusage(0, &usage)
 	if errno == 0 {

@@ -475,8 +475,7 @@ func (t *go_testMain_t) refreshIfNeeded() os.Error {
 			// Main func
 			buf.WriteString("\n")
 			buf.WriteString("func main() {\n")
-			buf.WriteString("\ttesting.Main(_regexp.MatchString, tests)\n")
-			buf.WriteString("\ttesting.RunBenchmarks(_regexp.MatchString, benchmarks)\n")
+			buf.WriteString("\ttesting.Main(_regexp.MatchString, tests, benchmarks)\n")
 			buf.WriteString("}\n")
 		}
 
