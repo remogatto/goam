@@ -31,7 +31,7 @@ func readDir_internal(dir *dir_t) os.Error {
 		println("read dir:", dir.path)
 	}
 
-	f, err := os.Open(dir.path, os.O_RDONLY, 0)
+	f, err := os.Open(dir.path)
 	if err != nil {
 		return err
 	}

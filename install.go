@@ -267,7 +267,7 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.Fil
 		{
 			var master_entries []os.FileInfo
 			{
-				f, err := os.Open(masterPath, os.O_RDONLY, 0)
+				f, err := os.Open(masterPath)
 				if err != nil {
 					return err
 				}
@@ -383,7 +383,7 @@ up:
 }
 
 func isEmptyDir(path string) (bool, os.Error) {
-	f, err := os.Open(path, os.O_RDONLY, 0)
+	f, err := os.Open(path)
 	if err != nil {
 		return false, err
 	}
