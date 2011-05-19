@@ -631,7 +631,7 @@ func (v *ast_visitor_t) Visit(node ast.Node) ast.Visitor {
 		v.importSpecs.Push(importSpec)
 		return nil
 	} else if funcDecl, isFuncDecl := node.(*ast.FuncDecl); isFuncDecl {
-		if funcDecl.Body != nil {
+		if (funcDecl.Recv == nil) && (funcDecl.Body != nil) {
 			name := funcDecl.Name.Name
 			if strings.HasPrefix(name, "Test") {
 				v.tests.Push(name)
