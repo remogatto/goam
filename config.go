@@ -106,6 +106,12 @@ func defineFunctions(w *eval.World) {
 
 	{
 		var functionSignature func(uint)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_MinGoamVersion, functionSignature)
+		w.DefineVar("MinGoamVersion", funcType, funcValue)
+	}
+
+	{
+		var functionSignature func(uint)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_MinCompilerVersion, functionSignature)
 		w.DefineVar("MinCompilerVersion", funcType, funcValue)
 	}
@@ -331,6 +337,24 @@ func wrapper_DisableGoFmt(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		println("(read config) disable gofmt \"" + path + "\"")
 	}
 	disabledGoFmt[path] = 0
+}
+
+
+const VERSION = 1
+
+// Signature: func MinGoamVersion(version uint)
+func wrapper_MinGoamVersion(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	minVersion := in[0].(eval.UintValue).Get(t)
+
+	if *flag_debug {
+		println("(read config) Goam min version:", minVersion)
+	}
+
+	if VERSION < minVersion {
+		msg := fmt.Sprintf("insufficient GOAM version: %d, minimum required version is %d", VERSION, minVersion)
+		t.Abort(os.NewError(msg))
+		return
+	}
 }
 
 

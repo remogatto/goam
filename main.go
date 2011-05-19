@@ -296,12 +296,17 @@ var flag_timings = flag.Bool("t", false, "Print timings pertaining executed comm
 var flag_verbose = flag.Bool("v", false, "Verbose")
 var flag_debug = flag.Bool("d", false, "Print debugging messages")
 var flag_dashboard = flag.Bool("dashboard", true, "Report public packages at "+dashboardURL)
+var flag_version = flag.Bool("version", false, "Print version and exit")
 
 func main() {
 	flag.Usage = func() { fmt.Fprintln(os.Stderr); usage() }
 	flag.Parse()
 
 	args := flag.Args()
+	if *flag_version && (len(args) == 0) {
+		fmt.Fprintf(os.Stderr, "GOAM version: %d\n", VERSION)
+		os.Exit(0)
+	}
 	if len(args) < 1 {
 		usage()
 		os.Exit(1)

@@ -133,6 +133,13 @@ func DisableGoFmt(path string)
     in a directory passed to 'IgnoreDir'.
 
 
+func MinGoamVersion(version uint)
+
+    Enforces a constraint on the minimum GOAM version.
+    The version of the GOAM tool can be determined by the "-version"
+    command-line option.
+
+
 func MinCompilerVersion(version uint)
 
     Enforces a constraint on the minimum version of the Go compiler.
