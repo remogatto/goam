@@ -121,17 +121,15 @@ type Executable struct {
 }
 
 type RunFlags struct {
-	cmdChan_orNil         chan *exec.Cmd
-	stdin, stdout, stderr int
+	stdin, stdout, stderr *os.File
 	dontPrintCmd          bool
 }
 
 func (e *Executable) runSimply(argv []string, dir string, dontPrintCmd bool) os.Error {
 	flags := RunFlags{
-		cmdChan_orNil: nil,
-		stdin:         exec.PassThrough,
-		stdout:        exec.PassThrough,
-		stderr:        exec.PassThrough,
+		stdin:         nil,
+		stdout:        os.Stdout,
+		stderr:        os.Stderr,
 		dontPrintCmd:  false,
 	}
 
@@ -142,74 +140,96 @@ func (e *Executable) runSimply(argv []string, dir string, dontPrintCmd bool) os.
 // and returns the data the process sent to its output(s).
 // The argument 'in' comprises the command's input.
 func (e *Executable) run(argv []string, dir string, in string, mergeStdoutAndStderr bool) (stdout string, stderr string, err os.Error) {
-	cmdChan := make(chan *exec.Cmd)
+	stdin_r, stdin_w, err := os.Pipe()
+	if err != nil {
+		return "", "", err
+	}
+
+	stdout_r, stdout_w, err := os.Pipe()
+	if err != nil {
+		stdin_r.Close()
+		stdin_w.Close()
+		return "", "", err
+	}
+
+	var stderr_r, stderr_w *os.File
+	if mergeStdoutAndStderr {
+		stderr_r, stderr_w = stdout_r, stdout_w
+	} else {
+		stderr_r, stderr_w, err = os.Pipe()
+		if err != nil {
+			stdin_r.Close()
+			stdin_w.Close()
+			stdout_r.Close()
+			stdout_w.Close()
+			return "", "", err
+		}
+	}
+
 	errChan := make(chan os.Error, 3)
 	stdoutChan := make(chan []byte, 1)
 	stderrChan := make(chan []byte, 1)
-	go func() {
-		cmd := <-cmdChan
-		if cmd != nil {
-			// A goroutine for feeding STDIN
-			go func() {
-				_, err := cmd.Stdin.WriteString(in)
-				if err != nil {
-					cmd.Stdin.Close()
-				} else {
-					err = cmd.Stdin.Close()
-				}
-				errChan <- err
-			}()
-
-			// A goroutine for consuming STDOUT.
-			// Note: STDOUT is optionally merged with STDERR.
-			go func() {
-				stdout, err := ioutil.ReadAll(cmd.Stdout)
-				if err != nil {
-					cmd.Stdout.Close()
-					errChan <- err
-				} else {
-					err = cmd.Stdout.Close()
-					errChan <- err
-					stdoutChan <- stdout
-				}
-			}()
-
-			if cmd.Stderr != nil {
-				// A goroutine for consuming STDERR
-				go func() {
-					stderr, err := ioutil.ReadAll(cmd.Stderr)
-					if err != nil {
-						cmd.Stderr.Close()
-						errChan <- err
-					} else {
-						err = cmd.Stderr.Close()
-						errChan <- err
-						stderrChan <- stderr
-					}
-				}()
+	{
+		// A goroutine for feeding STDIN
+		go func() {
+			_, err := stdin_w.WriteString(in)
+			if err != nil {
+				stdin_w.Close()
 			} else {
-				errChan <- nil
-				stderrChan <- make([]byte, 0)
+				err = stdin_w.Close()
 			}
-		}
-	}()
+			errChan <- err
+		}()
 
-	var stderrHandling int
-	if mergeStdoutAndStderr {
-		stderrHandling = exec.MergeWithStdout
-	} else {
-		stderrHandling = exec.Pipe
+		// A goroutine for consuming STDOUT.
+		// Note: STDOUT is optionally merged with STDERR.
+		go func() {
+			stdout, err := ioutil.ReadAll(stdout_r)
+			if err != nil {
+				stdout_r.Close()
+				errChan <- err
+			} else {
+				err = stdout_r.Close()
+				errChan <- err
+				stdoutChan <- stdout
+			}
+		}()
+
+		if !mergeStdoutAndStderr {
+			// A goroutine for consuming STDERR
+			go func() {
+				stderr, err := ioutil.ReadAll(stderr_r)
+				if err != nil {
+					stderr_r.Close()
+					errChan <- err
+				} else {
+					err = stderr_r.Close()
+					errChan <- err
+					stderrChan <- stderr
+				}
+			}()
+		} else {
+			errChan <- nil
+			stderrChan <- make([]byte, 0)
+		}
 	}
 
+	// Execute the command
 	flags := RunFlags{
-		cmdChan_orNil: cmdChan,
-		stdin:         exec.Pipe,
-		stdout:        exec.Pipe,
-		stderr:        stderrHandling,
+		stdin:         stdin_r,
+		stdout:        stdout_w,
+		stderr:        stderr_w,
 		dontPrintCmd:  true,
 	}
-
 	err = e.run_lowLevel(argv, dir, flags)
+
+	// Close our ends of the pipes, so that the I/O goroutines can finish
+	stdin_r.Close()
+	stdout_w.Close()
+	if stderr_w != stdout_w {
+		stderr_w.Close()
+	}
+
 	if err != nil {
 		return "", "", err
 	}
@@ -230,12 +250,10 @@ func (e *Executable) run(argv []string, dir string, in string, mergeStdoutAndStd
 
 	stdout = string(<-stdoutChan)
 	stderr = string(<-stderrChan)
-
 	return stdout, stderr, nil
 }
 
-// Runs 'e' as separate process and waits until it finishes.
-// If 'cmdChan_orNil' is not nil, it will receive the 'exec.Cmd' returned by 'exec.Run'.
+// Runs 'e' as a separate process and waits until it finishes
 func (e *Executable) run_lowLevel(argv []string, dir string, flags RunFlags) os.Error {
 	// Resolve 'e.fullpath' (if not resolved yet)
 	if len(e.fullPath) == 0 {
@@ -263,19 +281,16 @@ func (e *Executable) run_lowLevel(argv []string, dir string, flags RunFlags) os.
 		}
 	}
 
-	cmd, err := exec.Run(e.fullPath, argv, os.Environ(), dir, flags.stdin, flags.stdout, flags.stderr)
+	procAttr := os.ProcAttr{
+		Dir:   dir,
+		Files: []*os.File{flags.stdin, flags.stdout, flags.stderr},
+	}
+	process, err := os.StartProcess(e.fullPath, argv, &procAttr)
 	if err != nil {
-		if flags.cmdChan_orNil != nil {
-			flags.cmdChan_orNil <- nil
-		}
 		return err
-	} else {
-		if flags.cmdChan_orNil != nil {
-			flags.cmdChan_orNil <- cmd
-		}
 	}
 
-	waitMsg, err := cmd.Wait( /*options*/ os.WRUSAGE)
+	waitMsg, err := process.Wait( /*options*/ os.WRUSAGE)
 	if err != nil {
 		return err
 	}
