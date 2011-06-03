@@ -303,7 +303,7 @@ func main() {
 	flag.Parse()
 
 	args := flag.Args()
-	if *flag_version && (len(args) == 0) {
+	if *flag_version {
 		fmt.Fprintf(os.Stderr, "GOAM version: %d\n", VERSION)
 		os.Exit(0)
 	}
