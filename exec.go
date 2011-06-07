@@ -127,10 +127,10 @@ type RunFlags struct {
 
 func (e *Executable) runSimply(argv []string, dir string, dontPrintCmd bool) os.Error {
 	flags := RunFlags{
-		stdin:         nil,
-		stdout:        os.Stdout,
-		stderr:        os.Stderr,
-		dontPrintCmd:  false,
+		stdin:        os.Stdin,
+		stdout:       os.Stdout,
+		stderr:       os.Stderr,
+		dontPrintCmd: false,
 	}
 
 	return e.run_lowLevel(argv, dir, flags)
@@ -216,10 +216,10 @@ func (e *Executable) run(argv []string, dir string, in string, mergeStdoutAndStd
 
 	// Execute the command
 	flags := RunFlags{
-		stdin:         stdin_r,
-		stdout:        stdout_w,
-		stderr:        stderr_w,
-		dontPrintCmd:  true,
+		stdin:        stdin_r,
+		stdout:       stdout_w,
+		stderr:       stderr_w,
+		dontPrintCmd: true,
 	}
 	err = e.run_lowLevel(argv, dir, flags)
 
