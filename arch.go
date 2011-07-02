@@ -78,7 +78,7 @@ func getGoCompilerVersion() (uint, os.Error) {
 		}
 
 		stdout = strings.TrimSpace(stdout)
-		var stdout_split []string = strings.Split(stdout, " ", -1)
+		var stdout_split []string = strings.Split(stdout, " ")
 		if len(stdout_split) < 3 {
 			return 0, os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\"" +
 				" (possible cause: you didn't have the Mercurial versioning system installed when you were compiling the Go distribution)")

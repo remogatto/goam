@@ -243,7 +243,7 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func check_executable2sources(root *dir_t) os.Error {
 	for executable, sources := range executable2sources {
 		for _, source := range sources {
-			var object object_t = root.getObject_orNil(strings.Split(source, "/", -1))
+			var object object_t = root.getObject_orNil(strings.Split(source, "/"))
 
 			if object == nil {
 				return os.NewError("executable \"" + executable + "\" depends on non-existent object \"" + source + "\"")
@@ -482,7 +482,7 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	var importPaths_array []string
 	{
-		importPaths_array = strings.Split(importPaths, " ", -1)
+		importPaths_array = strings.Split(importPaths, " ")
 
 		// Remove empty strings from 'importPaths_array'
 		{
