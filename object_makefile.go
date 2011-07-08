@@ -95,7 +95,7 @@ func (m *makefile_t) InferObjects(updateTests bool) os.Error {
 				return os.NewError("makefile \"" + m.Path() + "\": Go file \"" + goFile + "\"' should have .go extension")
 			}
 
-			var _src object_t = m.parent.getObject_orNil(strings.Split(goFile, "/", -1))
+			var _src object_t = m.parent.getObject_orNil(strings.Split(goFile, "/"))
 
 			var src go_source_code_t
 			if _src == nil {
@@ -136,7 +136,7 @@ func (m *makefile_t) InferObjects(updateTests bool) os.Error {
 		objDir := m.parent.getOrCreateSubDir("_obj")
 
 		dirPath, baseName := pathutil.Split(contents.targ)
-		lib_dir := objDir.getOrCreateSubDirs(strings.Split(dirPath, "/", -1))
+		lib_dir := objDir.getOrCreateSubDirs(strings.Split(dirPath, "/"))
 		lib_name := baseName + ".a"
 
 		var lib *library_t
@@ -300,7 +300,7 @@ func read_makefile_contents(path, dir string) (*makefile_contents_t, os.Error) {
 			return nil, os.NewError("failed to extract needed variables from \"" + path + "\": " + err.String())
 		}
 
-		makeOutput_lines = strings.Split(makeOutput, "\n", -1)
+		makeOutput_lines = strings.Split(makeOutput, "\n")
 		if len(makeOutput_lines) < 3 {
 			return nil, os.NewError("failed to extract needed variables from \"" + path + "\"")
 		}

@@ -47,7 +47,7 @@ func (info *info_t) Print(w io.Writer) {
 			i++
 		}
 
-		sort.SortStrings(paths)
+		sort.Strings(paths)
 
 		for _, path := range paths {
 			lib := libs_byPath[path]
@@ -112,7 +112,7 @@ func (info *info_t) Print(w io.Writer) {
 }
 
 func sortAndPrintNames(w io.Writer, prefix string, names []string) {
-	sort.SortStrings(names)
+	sort.Strings(names)
 	for _, name := range names {
 		fmt.Fprintf(w, "%s%s\n", prefix, name)
 	}
@@ -134,7 +134,7 @@ func printExecutables(w io.Writer, tag string, allowVerbose bool, executables ma
 			i++
 		}
 
-		sort.SortStrings(paths)
+		sort.Strings(paths)
 
 		for _, path := range paths {
 			exe := exes_byPath[path]
