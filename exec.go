@@ -88,7 +88,7 @@ func printTimings(out *os.File) {
 			i++
 		}
 
-		sort.StringArray(sortedNames).Sort()
+		sort.StringSlice(sortedNames).Sort()
 	}
 
 	fmt.Fprintf(out, "Run times:\n")
