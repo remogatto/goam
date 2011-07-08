@@ -8,7 +8,8 @@ For further information examine the "doc" and "examples" directories.
 Alternative build tools can be found at
 [Go dashboard](http://godashboard.appspot.com/project).
 
-# Main features
+
+# Features
 
 ## Configuration
 * Small mostly-declarative configuration files
@@ -28,6 +29,14 @@ Alternative build tools can be found at
 * gotest support
 * gofmt support
 
+
 # Sample projects
 
 * [GoSpeccy](https://github.com/remogatto/gospeccy)
+
+
+# Compatibility notes
+
+* The Git branch "master" is in sync with weekly Go releases
+* The Git branch "release" is in sync with stable Go releases
+* The Git branch "gcc" is in sync with GCC releases
