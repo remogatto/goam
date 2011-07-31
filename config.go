@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"exp/eval"
+	eval "bitbucket.org/binet/go-eval/pkg/eval"
 	"fmt"
 	"go/token"
 	"io/ioutil"

@@ -35,6 +35,11 @@ Alternative build tools can be found at
 * [GoSpeccy](https://github.com/remogatto/gospeccy)
 
 
+# Installation requirements
+
+* [go-eval](https://bitbucket.org/binet/go-eval)
+
+
 # Compatibility notes
 
 * The Git branch "master" is in sync with weekly Go releases
