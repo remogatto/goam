@@ -169,7 +169,7 @@ func inferObjects(f go_source_code_t, test bool) os.Error {
 			}
 
 			dirPath, baseName := pathutil.Split(target)
-			lib_dir := objDir.getOrCreateSubDirs(strings.Split(dirPath, "/", -1))
+			lib_dir := objDir.getOrCreateSubDirs(strings.Split(dirPath, "/"))
 			lib_name := baseName + ".a"
 
 			var lib *library_t
@@ -209,7 +209,7 @@ func inferObjects(f go_source_code_t, test bool) os.Error {
 			if pathFromMapping, haveMapping := source2executable[f.Path()]; haveMapping {
 				dir, file := pathutil.Split(pathFromMapping)
 				exe_name = file
-				exe_dir = parent.root().getOrCreateSubDirs(strings.Split(dir, "/", -1))
+				exe_dir = parent.root().getOrCreateSubDirs(strings.Split(dir, "/"))
 			} else {
 				exe_name = defaultExeName
 				exe_dir = parent
@@ -456,7 +456,7 @@ func (t *go_testMain_t) refreshIfNeeded() os.Error {
 
 			// Tests
 			buf.WriteString("var tests = []testing.InternalTest{\n")
-			sort.SortStrings(t.tests)
+			sort.Strings(t.tests)
 			for _, test := range t.tests {
 				qualifiedName := packageName + "." + test
 				buf.WriteString("\t{\"" + qualifiedName + "\", " + qualifiedName + "},\n")
@@ -465,7 +465,7 @@ func (t *go_testMain_t) refreshIfNeeded() os.Error {
 
 			// Benchmarks
 			buf.WriteString("var benchmarks = []testing.InternalBenchmark{\n")
-			sort.SortStrings(t.benchmarks)
+			sort.Strings(t.benchmarks)
 			for _, benchmark := range t.benchmarks {
 				qualifiedName := packageName + "." + benchmark
 				buf.WriteString("\t{\"" + qualifiedName + "\", " + qualifiedName + "},\n")

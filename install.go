@@ -84,7 +84,7 @@ func new_installExecutable(srcPath string) *install_executable_t {
 }
 
 func (i *install_executable_t) find(root *dir_t) (*executable_t, os.Error) {
-	var _exe object_t = root.getObject_orNil(strings.Split(i.srcPath, "/", -1))
+	var _exe object_t = root.getObject_orNil(strings.Split(i.srcPath, "/"))
 	if _exe == nil {
 		return nil, os.NewError("unable to locate executable \"" + i.srcPath + "\"")
 	}
