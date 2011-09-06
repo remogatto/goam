@@ -137,7 +137,7 @@ func (m *makefile_t) InferObjects(updateTests bool) os.Error {
 
 		dirPath, baseName := pathutil.Split(contents.targ)
 		lib_dir := objDir.getOrCreateSubDirs(strings.Split(dirPath, "/"))
-		lib_name := baseName + ".a"
+		lib_name := goArchiver_libNamePrefix + baseName + ".a"
 
 		var lib *library_t
 		lib, err = lib_dir.getOrCreate_library(lib_name)
@@ -339,17 +339,19 @@ func read_makefile_contents(path, dir string) (*makefile_contents_t, os.Error) {
 		}
 		goFiles = goFiles[0:j]
 
-		// Check the minimum compiler version
-		compilerVersion, err := getGoCompilerVersion()
-		if err != nil {
-			return nil, err
-		}
-		if compilerVersion < min_compiler_version_for_cgo {
-			msg := fmt.Sprintf("The makefile \"%s\" is using CGO."+
-				" Found Go compiler has version %d."+
-				" Minimum version supported by GOAM is %d.",
-				path, compilerVersion, min_compiler_version_for_cgo)
-			return nil, os.NewError(msg)
+		if !(*flag_gcc) {
+			// Check the minimum compiler version
+			compilerVersion, err := getGoCompilerVersion()
+			if err != nil {
+				return nil, err
+			}
+			if compilerVersion < min_compiler_version_for_cgo {
+				msg := fmt.Sprintf("The makefile \"%s\" is using CGO."+
+					" Found Go compiler has version %d."+
+					" Minimum version supported by GOAM is %d.",
+					path, compilerVersion, min_compiler_version_for_cgo)
+				return nil, os.NewError(msg)
+			}
 		}
 	}
 

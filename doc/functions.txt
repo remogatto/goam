@@ -150,3 +150,5 @@ func MinCompilerVersion(version uint)
         $ 8g -V
         8g version 6870 release release.2010-12-08
 
+    This function is does not work in gccgo mode. 
+

@@ -1,0 +1,5 @@
+The example in directory "example2" can be built with gccgo.
+To try this, change to the mentioned directory and execute "goam -gcc make".
+
+NOTE: If unsure whether the directory contains stale files from prior
+      executions of GOAM without -gcc flag, run "goam clean" first.

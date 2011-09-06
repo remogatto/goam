@@ -12,11 +12,17 @@ import (
 // The extension of files created by the Go compiler (.5, .6, .8)
 var o_ext string
 
-// The Go compiler (5g, 6g, 8g)
-var goCompilerName string
+// The Go compiler (5g, 6g, 8g, gccgo)
+var goCompiler_name string
+var goCompiler_flags []string
 
-// The Go linker (5l, 6l, 8l)
-var goLinkerName string
+// The Go archiver (gopack, ar)
+var goArchiver_name string
+var goArchiver_flags []string
+var goArchiver_libNamePrefix string
+
+// The Go linker (5l, 6l, 8l, gccgo)
+var goLinker_name string
 
 // The directory where to put/find installed libraries
 var libInstallRoot string = path.Join(runtime.GOROOT(), "pkg", runtime.GOOS+"_"+runtime.GOARCH)
@@ -31,26 +37,40 @@ var goCompiler_exe *Executable = nil
 var goArchiver_exe *Executable = nil
 var goLinker_exe *Executable = nil
 
-func init() {
-	switch runtime.GOARCH {
-	case "386":
-		o_ext = ".8"
-		goCompilerName = "8g"
-		goLinkerName = "8l"
+func initArch() {
+	if !(*flag_gcc) {
+		goArchiver_name = "gopack"
+		goArchiver_flags = []string{"grc"}
+		goArchiver_libNamePrefix = ""
 
-	case "amd64":
-		o_ext = ".6"
-		goCompilerName = "6g"
-		goLinkerName = "6l"
+		switch runtime.GOARCH {
+		case "386":
+			o_ext = ".8"
+			goCompiler_name = "8g"
+			goLinker_name = "8l"
 
-	case "arm":
-		o_ext = ".5"
-		goCompilerName = "5g"
-		goLinkerName = "5l"
+		case "amd64":
+			o_ext = ".6"
+			goCompiler_name = "6g"
+			goLinker_name = "6l"
 
-	default:
-		fmt.Fprintf(os.Stderr, "unknown GOARCH: %s\n", runtime.GOARCH)
-		os.Exit(1)
+		case "arm":
+			o_ext = ".5"
+			goCompiler_name = "5g"
+			goLinker_name = "5l"
+
+		default:
+			fmt.Fprintf(os.Stderr, "unknown GOARCH: %s\n", runtime.GOARCH)
+			os.Exit(1)
+		}
+	} else {
+		o_ext = ".o"
+		goCompiler_name = "gccgo"
+		goCompiler_flags = []string{"-c"}
+		goArchiver_name = "ar"
+		goArchiver_flags = []string{"rc"}
+		goArchiver_libNamePrefix = "lib"
+		goLinker_name = "gccgo"
 	}
 
 	exeInstallDir = os.Getenv("GOBIN")
@@ -58,9 +78,9 @@ func init() {
 		exeInstallDir = path.Join(runtime.GOROOT(), "bin")
 	}
 
-	goCompiler_exe = &Executable{name: goCompilerName}
-	goArchiver_exe = &Executable{name: "gopack"}
-	goLinker_exe = &Executable{name: goLinkerName}
+	goCompiler_exe = &Executable{name: goCompiler_name}
+	goArchiver_exe = &Executable{name: goArchiver_name}
+	goLinker_exe = &Executable{name: goLinker_name}
 }
 
 
