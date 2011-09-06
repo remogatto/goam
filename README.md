@@ -23,11 +23,13 @@ Alternative build tools can be found at
 * Installation and uninstallation
 * Download and installation of dependencies (only supports GitHub right now)
 
-## Integration with other tools
+## Integration with tools and alternative Go compilers
 * Makefile support
 * CGO support (but only via Makefile)
 * gotest support
 * gofmt support
+* Support for gccgo as compiler and linker
+  (without any support for installation or uninstallation)
 
 
 # Sample projects

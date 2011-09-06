@@ -204,6 +204,9 @@ func install([]string) os.Error {
 		return err
 	}
 
+	if *flag_gcc {
+		return os.NewError("there is no support for installation when using gccgo")
+	}
 	if len(installationCommands) == 0 {
 		return os.NewError("nothing to install")
 	}
@@ -292,15 +295,19 @@ var functionTable = map[string]function_info_t{
 	"gofmt":        {gofmt, 0, 0},
 }
 
-var flag_timings = flag.Bool("t", false, "Print timings pertaining executed commands")
-var flag_verbose = flag.Bool("v", false, "Verbose")
-var flag_debug = flag.Bool("d", false, "Print debugging messages")
-var flag_dashboard = flag.Bool("dashboard", true, "Report public packages at "+dashboardURL)
-var flag_version = flag.Bool("version", false, "Print version and exit")
+var (
+	flag_timings   = flag.Bool("t", false, "Print timings pertaining executed commands")
+	flag_verbose   = flag.Bool("v", false, "Verbose")
+	flag_debug     = flag.Bool("d", false, "Print debugging messages")
+	flag_dashboard = flag.Bool("dashboard", true, "Report public packages at "+dashboardURL)
+	flag_version   = flag.Bool("version", false, "Print version and exit")
+	flag_gcc       = flag.Bool("gcc", false, "Use gccgo as the compiler and linker")
+)
 
 func main() {
 	flag.Usage = func() { fmt.Fprintln(os.Stderr); usage() }
 	flag.Parse()
+	initArch()
 
 	args := flag.Args()
 	if *flag_version {

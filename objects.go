@@ -338,22 +338,19 @@ func (u *compilation_unit_t) Make() os.Error {
 			return err
 		}
 
-		var args = make([]string, 3+2*len(libIncludePaths)+len(u.sources))
+		var args []string
 		{
-			args[0] = goCompiler_exe.name
-			args[1] = "-o"
-			args[2] = u.path
-			i := 3
+			args = append(args, goCompiler_exe.name)
+			args = append(args, goCompiler_flags...)
+			args = append(args, "-o")
+			args = append(args, u.path)
 			if libIncludePaths != nil {
 				for incPath, _ := range libIncludePaths {
-					args[i+0] = "-I"
-					args[i+1] = incPath
-					i += 2
+					args = append(args, "-I", incPath)
 				}
 			}
 			for _, src := range u.sources {
-				args[i] = src.Path()
-				i++
+				args = append(args, src.Path())
 			}
 		}
 
@@ -515,12 +512,12 @@ func (l *library_t) Make() os.Error {
 				}
 			}
 
-			var args = make([]string, 3+len(l.sources))
-			args[0] = goArchiver_exe.name
-			args[1] = "grc"
-			args[2] = l.path
-			for i, src := range l.sources {
-				args[3+i] = src.Path()
+			var args []string
+			args = append(args, goArchiver_exe.name)
+			args = append(args, goArchiver_flags...)
+			args = append(args, l.path)
+			for _, src := range l.sources {
+				args = append(args, src.Path())
 			}
 
 			err = goArchiver_exe.runSimply(args, /*dir*/ "", /*dontPrint*/ false)
@@ -819,8 +816,7 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 				return err
 			}
 
-			numArgs := 3 + 2*len(libIncludePaths) + len(e.sources)
-			var args = make([]string, numArgs)
+			var args []string
 			{
 				var target string
 				if !installMode {
@@ -829,20 +825,15 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 					target = pathutil.Join(exeInstallDir, e.name)
 				}
 
-				args[0] = goLinker_exe.name
-				args[1] = "-o"
-				args[2] = target
-				i := 3
+				args = append(args, goLinker_exe.name)
+				args = append(args, "-o")
+				args = append(args, target)
 				for _, incPath := range libIncludePaths {
-					args[i+0] = "-L"
-					args[i+1] = incPath.path
-					i += 2
+					args = append(args, "-L", incPath.path)
 				}
 				for _, src := range e.sources {
-					args[i] = src.Path()
-					i++
+					args = append(args, src.Path())
 				}
-				args = args[0:i]
 			}
 
 			err = goLinker_exe.runSimply(args, /*dir*/ "", /*dontPrint*/ false)
@@ -907,13 +898,16 @@ func (e *executable_t) RunTests(testPattern, benchPattern string, errors *[]os.E
 	if len(e.testImportPath_orEmpty) > 0 {
 		exe := &Executable{name: "./" + e.name, noLookup: true}
 
-		args := make([]string, 1, 3)
+		args := make([]string, 1, 4)
 		args[0] = exe.name
 		if len(testPattern) > 0 {
 			args = append(args, "-test.run="+testPattern)
 		}
 		if len(benchPattern) > 0 {
 			args = append(args, "-test.bench="+benchPattern)
+		}
+		if *flag_verbose {
+			args = append(args, "-test.v")
 		}
 
 		err := exe.runSimply(args, /*dir*/ e.parent.path, /*dontPrint*/ false)

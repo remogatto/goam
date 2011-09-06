@@ -387,10 +387,13 @@ func isEmptyDir(path string) (bool, os.Error) {
 	if err != nil {
 		return false, err
 	}
+	defer f.Close()
 
 	// Try to read 1 entry to see if the directory is empty
 	entries, err := f.Readdir(1)
-	f.Close()
+	if err == os.EOF {
+		return true, nil
+	}
 	if err != nil {
 		return false, err
 	}

@@ -56,6 +56,13 @@ func resolvePackage(importPath string, test bool) (*package_resolution_t, os.Err
 		return nil, nil
 	}
 
+	if *flag_gcc {
+		// There is no support for package resolution when using gccgo.
+		// Simply return that there is no need to use "-I dir" or "-L dir".
+		// Resolution failures will be reported by gccgo.
+		return nil, nil
+	}
+
 	dir, base := pathutil.Split(importPath)
 	if dir == "." {
 		dir = ""

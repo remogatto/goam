@@ -170,7 +170,7 @@ func inferObjects(f go_source_code_t, test bool) os.Error {
 
 			dirPath, baseName := pathutil.Split(target)
 			lib_dir := objDir.getOrCreateSubDirs(strings.Split(dirPath, "/"))
-			lib_name := baseName + ".a"
+			lib_name := goArchiver_libNamePrefix + baseName + ".a"
 
 			var lib *library_t
 			lib, err = lib_dir.getOrCreate_library(lib_name)

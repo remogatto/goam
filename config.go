@@ -366,6 +366,11 @@ func wrapper_MinCompilerVersion(t *eval.Thread, in []eval.Value, out []eval.Valu
 		println("(read config) Go compiler min version:", minVersion)
 	}
 
+	if *flag_gcc {
+		t.Abort(os.NewError("function MinCompilerVersion is incompatible with gccgo"))
+		return
+	}
+
 	version, err := getGoCompilerVersion()
 	if err != nil {
 		t.Abort(err)
