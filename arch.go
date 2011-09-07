@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// The extension of files created by the Go compiler (.5, .6, .8)
+// The extension of files created by the Go compiler (.5 .6 .8 .o)
 var o_ext string
 
 // The Go compiler (5g, 6g, 8g, gccgo)

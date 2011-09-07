@@ -1,0 +1,14 @@
+Demonstration of OS-dependent and CPU architecture-dependent behavior
+in a GOAM configuration file.
+
+Running the following series of commands prints:
+
+	goam clean
+	goam -conf-os=linux make
+	./what-if
+	# Prints: "Hello from <your-CPU> and Linux"
+
+	goam clean
+	goam -conf-arch=amd64 -conf-os=darwin make
+	./what-if
+	# Prints: "Hello from x86-64 and Darwin"

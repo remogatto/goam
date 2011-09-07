@@ -146,7 +146,7 @@ func identifyFile(path string, fi *os.FileInfo, parent *dir_t) (object_t, os.Err
 		return new_go_file(entry, parent), nil
 	}
 
-	if (len(fi.Name) == len(configFileName)) && (strings.ToLower(fi.Name) == configFileName) {
+	if (len(fi.Name) == len(configFileName)) && (strings.ToLower(fi.Name) == strings.ToLower(configFileName)) {
 		if *flag_debug {
 			println("config file:", path)
 		}

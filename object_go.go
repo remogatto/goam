@@ -93,6 +93,13 @@ func inferObjects(f go_source_code_t, test bool) os.Error {
 		return nil
 	}
 
+	{
+		config := f.Parent().config_orNil
+		if (config != nil) && config.ignoresGoFile(f) {
+			return nil
+		}
+	}
+
 	contents, err := f.Contents()
 	if err != nil {
 		return err

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	configFileName = "goam.conf"
+	configFileName = "GOAM.conf"
 	defaultExeName = "a.out"
 	testExeName    = "package-test"
 )
@@ -34,12 +34,17 @@ func readConfig(config *config_file_t) os.Error {
 		currentConfig = config
 
 		w := eval.NewWorld()
+		defineConstants(w)
 		defineFunctions(w)
 		err = loadAndRunScript(w, config.path)
 
 		currentConfig = nil
 	}
 	configCurrent_mutex.Unlock()
+
+	if err != nil {
+		err = os.NewError(config.Path() + ": " + err.String())
+	}
 
 	return err
 }
@@ -78,12 +83,46 @@ func runScript(w *eval.World, path, sourceCode string) os.Error {
 	return nil
 }
 
+// An implementation of 'eval.StringValue'
+type string_value_t string
+
+func (v *string_value_t) String() string {
+	return string(*v)
+}
+
+func (v *string_value_t) Assign(t *eval.Thread, o eval.Value) {
+	*v = string_value_t(o.(eval.StringValue).Get(t))
+}
+
+func (v *string_value_t) Get(*eval.Thread) string {
+	return string(*v)
+}
+
+func (v *string_value_t) Set(t *eval.Thread, x string) {
+	*v = string_value_t(x)
+}
+
+func defineConstants(w *eval.World) {
+	GOOS := string_value_t(*flag_os)
+	GOARCH := string_value_t(*flag_arch)
+	GO_COMPILER := string_value_t(goCompiler_name)
+
+	w.DefineConst("GOOS", eval.StringType, &GOOS)
+	w.DefineConst("GOARCH", eval.StringType, &GOARCH)
+	w.DefineConst("GO_COMPILER", eval.StringType, &GO_COMPILER)
+}
 
 func defineFunctions(w *eval.World) {
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_Package, functionSignature)
 		w.DefineVar("Package", funcType, funcValue)
+	}
+
+	{
+		var functionSignature func(string)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_PackageFiles, functionSignature)
+		w.DefineVar("PackageFiles", funcType, funcValue)
 	}
 
 	{
@@ -163,6 +202,63 @@ func wrapper_Package(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	currentConfig.targetPackage_orEmpty = pkg
 }
 
+// Signature: func PackageFiles(files string)
+func wrapper_PackageFiles(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	_files := in[0].(eval.StringValue).Get(t)
+
+	if currentConfig.packageFiles_orNil != nil {
+		t.Abort(os.NewError("package files already defined"))
+		return
+	}
+
+	var files []string
+	{
+		files = strings.Fields(_files)
+		if len(files) == 0 {
+			t.Abort(os.NewError("empty list of files"))
+			return
+		}
+
+		// Check 'files[i]'
+		for i := 0; i < len(files); i++ {
+			file, err := cleanAndCheckPath(t, files[i])
+			if err != nil {
+				t.Abort(err)
+				return
+			}
+
+			if !strings.HasSuffix(file, ".go") {
+				t.Abort(os.NewError("the name of file \"" + file + "\" does not end with \".go\""))
+				return
+			}
+
+			dir, _ := pathutil.Split(file)
+			if len(dir) > 0 {
+				t.Abort(os.NewError("package file \"" + file + "\" uses a relative path"))
+				return
+			}
+
+			path := pathutil.Join(currentConfig.parent.path, file)
+
+			if !fileExists(path) {
+				t.Abort(os.NewError("file \"" + path + "\" does not exist"))
+				return
+			}
+
+			files[i] = file
+		}
+	}
+
+	if *flag_debug {
+		fmt.Printf("(read config) package files %v\n", files)
+	}
+
+	packageFiles := make(map[string]byte)
+	for _, file := range files {
+		packageFiles[file] = 0
+	}
+	currentConfig.packageFiles_orNil = packageFiles
+}
 
 // Mapping between [the path of an executable] and [the paths of Go files from which to build the executable]
 var executable2sources = make(map[string][]string)
@@ -173,10 +269,9 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	name := in[0].(eval.StringValue).Get(t)
 	_sources := in[1].(eval.StringValue).Get(t)
 
-	var err os.Error
-
 	// Check the name, make the name relative to the local root
 	{
+		var err os.Error
 		name, err = cleanAndCheckPath(t, name)
 		if err != nil {
 			t.Abort(err)
@@ -209,6 +304,11 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 			source, err := cleanAndCheckPath(t, sources[i])
 			if err != nil {
 				t.Abort(err)
+				return
+			}
+
+			if !strings.HasSuffix(source, ".go") {
+				t.Abort(os.NewError("the name of file \"" + source + "\" does not end with \".go\""))
 				return
 			}
 
@@ -340,7 +440,7 @@ func wrapper_DisableGoFmt(t *eval.Thread, in []eval.Value, out []eval.Value) {
 }
 
 
-const VERSION = 1
+const VERSION = 2
 
 // Signature: func MinGoamVersion(version uint)
 func wrapper_MinGoamVersion(t *eval.Thread, in []eval.Value, out []eval.Value) {
@@ -529,7 +629,7 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	case "github":
 		kind = GITHUB
 	default:
-		t.Abort(os.NewError("repository \"" + repositoryPath + "\": \"" + kindString + "\" is not a valid repository type"))
+		t.Abort(os.NewError("repository \"" + repositoryPath + "\": \"" + kindString + "\" is an invalid repository type"))
 		return
 	}
 

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 )
 
 func usage() {
@@ -302,6 +303,8 @@ var (
 	flag_dashboard = flag.Bool("dashboard", true, "Report public packages at "+dashboardURL)
 	flag_version   = flag.Bool("version", false, "Print version and exit")
 	flag_gcc       = flag.Bool("gcc", false, "Use gccgo as the compiler and linker")
+	flag_arch      = flag.String("conf-arch", runtime.GOARCH, "The value of GOARCH to use when interpreting GOAM.conf files")
+	flag_os        = flag.String("conf-os", runtime.GOOS, "The value of GOOS to use when interpreting GOAM.conf files")
 )
 
 func main() {

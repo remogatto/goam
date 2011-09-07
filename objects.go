@@ -49,11 +49,13 @@ type entry_t struct {
 	mtime int64
 }
 
-// Represents a GOAM config file (goam.conf)
+// Represents a GOAM config file (GOAM.conf)
 type config_file_t struct {
 	entry_t
 	parent                *dir_t
 	targetPackage_orEmpty string // Empty string means the target package is unspecified
+	packageFiles_orNil    map[string]byte // A set of file names, each name ends with ".go".
+	                                      // A nil value means "all Go files in the directory".
 }
 
 // Represents a FILE.o, FILE.8, FILE.6, etc
@@ -179,6 +181,13 @@ func (f *config_file_t) UpdateFileSystemModel() {
 }
 
 func (f *config_file_t) InferObjects(updateTests bool) os.Error {
+	// Consistency check
+	if f.packageFiles_orNil != nil {
+		if len(f.targetPackage_orEmpty) == 0 {
+			return os.NewError("configuration file \"" + f.path + "\" specifies package files, but does not specify the package")
+		}
+	}
+
 	return nil
 }
 
@@ -208,6 +217,18 @@ func (f *config_file_t) Clean() os.Error {
 
 func (f *config_file_t) GoFmt(files *vector.StringVector) os.Error {
 	return nil
+}
+
+func (f *config_file_t) ignoresGoFile(g go_source_code_t) bool {
+	if f.packageFiles_orNil == nil {
+		// Do not ignore any Go files
+		return false
+	}
+
+	packageFiles := f.packageFiles_orNil
+
+	_, present := packageFiles[g.Name()]
+	return !present
 }
 
 
@@ -273,7 +294,7 @@ func (u *compilation_unit_t) Make() os.Error {
 		rebuild = true
 	}
 
-	var libIncludePaths map[string]byte = nil // This is a set of strings
+	var libIncludePaths map[*dir_t]byte = nil // This is a set of dirs
 
 	{
 		var missingSources []go_source_code_t = nil
@@ -310,10 +331,10 @@ func (u *compilation_unit_t) Make() os.Error {
 
 			if len(pkgs) > 0 {
 				if libIncludePaths == nil {
-					libIncludePaths = make(map[string]byte)
+					libIncludePaths = make(map[*dir_t]byte)
 				}
 				for _, pkg := range pkgs {
-					libIncludePaths[pkg.includePath.path] = 0
+					libIncludePaths[pkg.includePath] = 0
 
 					if pkg.lib.Mtime() > mtime {
 						rebuild = true
@@ -346,7 +367,7 @@ func (u *compilation_unit_t) Make() os.Error {
 			args = append(args, u.path)
 			if libIncludePaths != nil {
 				for incPath, _ := range libIncludePaths {
-					args = append(args, "-I", incPath)
+					args = append(args, "-I", incPath.path)
 				}
 			}
 			for _, src := range u.sources {
