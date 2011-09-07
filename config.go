@@ -628,6 +628,8 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	switch strings.ToLower(kindString) {
 	case "github":
 		kind = GITHUB
+	case "bitbucket":
+		kind = BITBUCKET
 	default:
 		t.Abort(os.NewError("repository \"" + repositoryPath + "\": \"" + kindString + "\" is an invalid repository type"))
 		return
@@ -691,6 +693,8 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 			switch kind {
 			case GITHUB:
 				repository = new_repository_github(repositoryPath)
+			case BITBUCKET:
+				repository = new_repository_bitbucket(repositoryPath)
 			default:
 				panic("invalid kind")
 			}

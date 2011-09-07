@@ -11,6 +11,7 @@ import (
 // Enumeration of supported repository kinds
 const (
 	GITHUB = iota
+	BITBUCKET
 )
 
 type remote_package_t struct {
@@ -28,6 +29,10 @@ type repository_t interface {
 }
 
 type repository_github_t struct {
+	repositoryPath string
+}
+
+type repository_bitbucket_t struct {
 	repositoryPath string
 }
 
@@ -151,7 +156,7 @@ func (r *repository_github_t) CloneOrUpdate() (string, bool, os.Error) {
 	cloneDir := pathutil.Join(remotePkgInstallRoot, "github.com", user)
 	projectDir := pathutil.Join(cloneDir, project)
 
-	var reportToDashboard bool
+	exe := git_exe
 
 	var alreadyCloned = fileExists(projectDir)
 	if !alreadyCloned {
@@ -161,30 +166,107 @@ func (r *repository_github_t) CloneOrUpdate() (string, bool, os.Error) {
 		}
 
 		// Clone
-		args := []string{git_exe.name, "clone", "https://github.com/" + user + "/" + project + ".git"}
-		err = git_exe.runSimply(args, cloneDir, /*dontPrint*/ false)
+		args := []string{exe.name, "clone", "https://github.com/" + user + "/" + project + ".git"}
+		err = exe.runSimply(args, cloneDir, /*dontPrint*/ false)
 		if err != nil {
 			return "", false, err
 		}
-
-		reportToDashboard = true
 	} else {
-		// Update
+		// Download changes and update local files
 		var args []string
 		if *flag_verbose {
-			args = []string{git_exe.name, "pull"}
+			args = []string{exe.name, "pull"}
 		} else {
-			args = []string{git_exe.name, "pull", "-q"}
+			args = []string{exe.name, "pull", "-q"}
 		}
-		err = git_exe.runSimply(args, projectDir, /*dontPrint*/ false)
+		err = exe.runSimply(args, projectDir, /*dontPrint*/ false)
+		if err != nil {
+			return "", false, err
+		}
+	}
+
+	return projectDir, true, nil
+}
+
+
+// ======================
+// repository_bitbucket_t
+// ======================
+
+func new_repository_bitbucket(repositoryPath string) *repository_bitbucket_t {
+	return &repository_bitbucket_t{repositoryPath}
+}
+
+func (r *repository_bitbucket_t) Kind() int {
+	return BITBUCKET
+}
+
+func (r *repository_bitbucket_t) KindString() string {
+	return "BitBucket"
+}
+
+func (r *repository_bitbucket_t) Path() string {
+	return r.repositoryPath
+}
+
+func (r *repository_bitbucket_t) DashboardPath() string {
+	return "bitbucket.org/" + r.repositoryPath
+}
+
+var hg_exe = &Executable{
+	name: "hg",
+}
+
+func (r *repository_bitbucket_t) CloneOrUpdate() (string, bool, os.Error) {
+	var err os.Error
+
+	user, project := pathutil.Split(r.repositoryPath)
+	user = pathutil.Clean(user)
+
+	cloneDir := pathutil.Join(remotePkgInstallRoot, "bitbucket.org", user)
+	projectDir := pathutil.Join(cloneDir, project)
+
+	exe := hg_exe
+
+	var alreadyCloned = fileExists(projectDir)
+	if !alreadyCloned {
+		err = mkdirAll(cloneDir, 0777)
 		if err != nil {
 			return "", false, err
 		}
 
-		reportToDashboard = false
+		// Clone
+		args := []string{exe.name, "clone", "https://bitbucket.org/" + user + "/" + project}
+		err = exe.runSimply(args, cloneDir, /*dontPrint*/ false)
+		if err != nil {
+			return "", false, err
+		}
+	} else {
+		// Download changes
+		var args []string
+		if *flag_verbose {
+			args = []string{exe.name, "pull"}
+		} else {
+			args = []string{exe.name, "pull", "-q"}
+		}
+		err = exe.runSimply(args, projectDir, /*dontPrint*/ false)
+		if err != nil {
+			return "", false, err
+		}
+
+		// Update local files
+		if *flag_verbose {
+			args = []string{exe.name, "update"}
+		} else {
+			args = []string{exe.name, "update", "-q"}
+		}
+		err = exe.runSimply(args, projectDir, /*dontPrint*/ false)
+		if err != nil {
+			return "", false, err
+		}
 	}
 
-	return projectDir, reportToDashboard, nil
+	return projectDir, true, nil
 }
 
 
@@ -195,7 +277,6 @@ func (r *repository_github_t) CloneOrUpdate() (string, bool, os.Error) {
 func checkRepositoryPath(kind int, path string) os.Error {
 	switch kind {
 	case GITHUB:
-		// Check for "http://" or similar prefixes
 		if strings.Contains(path, "://") {
 			return os.NewError("invalid GitHub repository path (try removing \"http://\" or similar prefixes)")
 		}
@@ -204,6 +285,14 @@ func checkRepositoryPath(kind int, path string) os.Error {
 		}
 		if strings.HasSuffix(path, ".git") {
 			return os.NewError("invalid GitHub repository path (try without the \".git\" suffix)")
+		}
+
+	case BITBUCKET:
+		if strings.Contains(path, "://") {
+			return os.NewError("invalid BitBucket repository path (try removing \"http://\" or similar prefixes)")
+		}
+		if strings.HasPrefix(path, "bitbucket.org") {
+			return os.NewError("invalid BitBucket repository path (try without the \"bitbucket.org\" prefix)")
 		}
 
 	default:
