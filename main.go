@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"container/vector"
 	"flag"
 	"fmt"
 	"os"
@@ -266,7 +265,7 @@ func gofmt([]string) os.Error {
 		return err
 	}
 
-	var files vector.StringVector
+	var files []string
 	err = rootObject.GoFmt(&files)
 	if err != nil {
 		return err

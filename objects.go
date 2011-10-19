@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/vector"
 	"fmt"
 	"io"
 	"os"
@@ -28,7 +27,7 @@ type object_t interface {
 	MakeTests() os.Error
 	RunTests(testPattern, benchPattern string, errors *[]os.Error)
 	Clean() os.Error
-	GoFmt(files *vector.StringVector) os.Error
+	GoFmt(files *[]string) os.Error
 }
 
 // A file system entry.
@@ -215,7 +214,7 @@ func (f *config_file_t) Clean() os.Error {
 	return nil
 }
 
-func (f *config_file_t) GoFmt(files *vector.StringVector) os.Error {
+func (f *config_file_t) GoFmt(files *[]string) os.Error {
 	return nil
 }
 
@@ -415,7 +414,7 @@ func (u *compilation_unit_t) Clean() os.Error {
 	return err
 }
 
-func (u *compilation_unit_t) GoFmt(files *vector.StringVector) os.Error {
+func (u *compilation_unit_t) GoFmt(files *[]string) os.Error {
 	return nil
 }
 
@@ -641,7 +640,7 @@ func (l *library_t) Uninstall(importPath string) os.Error {
 	return nil
 }
 
-func (l *library_t) GoFmt(files *vector.StringVector) os.Error {
+func (l *library_t) GoFmt(files *[]string) os.Error {
 	return nil
 }
 
@@ -988,6 +987,6 @@ func (e *executable_t) Uninstall() os.Error {
 	return nil
 }
 
-func (e *executable_t) GoFmt(files *vector.StringVector) os.Error {
+func (e *executable_t) GoFmt(files *[]string) os.Error {
 	return nil
 }

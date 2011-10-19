@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/vector"
 	"io"
 	"os"
 	pathutil "path"
@@ -395,7 +394,7 @@ func (d *dir_t) Clean() os.Error {
 	return nil
 }
 
-func (d *dir_t) GoFmt(files *vector.StringVector) os.Error {
+func (d *dir_t) GoFmt(files *[]string) os.Error {
 	for _, object := range d.objects {
 		err := object.GoFmt(files)
 		if err != nil {

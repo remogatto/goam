@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/vector"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -42,8 +41,8 @@ type go_testMain_t struct {
 	contents   *go_file_contents_t // Initially nil
 	importPath string
 	refresh    bool
-	tests      vector.StringVector
-	benchmarks vector.StringVector
+	tests      []string
+	benchmarks []string
 }
 
 // The content of a Go file
@@ -296,7 +295,7 @@ func (f *go_file_t) Clean() os.Error {
 	return nil
 }
 
-func (f *go_file_t) GoFmt(files *vector.StringVector) os.Error {
+func (f *go_file_t) GoFmt(files *[]string) os.Error {
 	if _, disabled := disabledGoFmt[pathutil.Clean(f.path)]; disabled {
 		if *flag_debug {
 			println("disabled gofmt:", f.path)
@@ -311,7 +310,7 @@ func (f *go_file_t) GoFmt(files *vector.StringVector) os.Error {
 		return nil
 	}
 
-	files.Push(f.path)
+	*files = append(*files, f.path)
 
 	return nil
 }
@@ -379,7 +378,7 @@ func (t *go_test_t) Clean() os.Error {
 	return nil
 }
 
-func (t *go_test_t) GoFmt(files *vector.StringVector) os.Error {
+func (t *go_test_t) GoFmt(files *[]string) os.Error {
 	if _, disabled := disabledGoFmt[pathutil.Clean(t.path)]; disabled {
 		if *flag_debug {
 			println("disabled gofmt:", t.path)
@@ -387,7 +386,7 @@ func (t *go_test_t) GoFmt(files *vector.StringVector) os.Error {
 		return nil
 	}
 
-	files.Push(t.path)
+	*files = append(*files, t.path)
 
 	return nil
 }
@@ -417,13 +416,11 @@ func (t *go_testMain_t) setImportPath(importPath string) os.Error {
 }
 
 func (t *go_testMain_t) addTests(names []string) {
-	var vect vector.StringVector = names
-	t.tests.AppendVector(&vect)
+	t.tests = append(t.tests, names...)
 }
 
 func (t *go_testMain_t) addBenchmarks(names []string) {
-	var vect vector.StringVector = names
-	t.benchmarks.AppendVector(&vect)
+	t.benchmarks = append(t.benchmarks, names...)
 }
 
 func (t *go_testMain_t) packageName() string {
@@ -616,7 +613,7 @@ func (t *go_testMain_t) Clean() os.Error {
 
 }
 
-func (t *go_testMain_t) GoFmt(files *vector.StringVector) os.Error {
+func (t *go_testMain_t) GoFmt(files *[]string) os.Error {
 	return nil
 }
 
@@ -626,24 +623,23 @@ func (t *go_testMain_t) GoFmt(files *vector.StringVector) os.Error {
 // ==================
 
 type ast_visitor_t struct {
-	// A vector of 'ast.ImportSpec'
-	importSpecs vector.Vector
+	importSpecs []*ast.ImportSpec
 
-	tests      vector.StringVector
-	benchmarks vector.StringVector
+	tests      []string
+	benchmarks []string
 }
 
 func (v *ast_visitor_t) Visit(node ast.Node) ast.Visitor {
 	if importSpec, isImportSpec := node.(*ast.ImportSpec); isImportSpec {
-		v.importSpecs.Push(importSpec)
+		v.importSpecs = append(v.importSpecs, importSpec)
 		return nil
 	} else if funcDecl, isFuncDecl := node.(*ast.FuncDecl); isFuncDecl {
 		if (funcDecl.Recv == nil) && (funcDecl.Body != nil) {
 			name := funcDecl.Name.Name
 			if strings.HasPrefix(name, "Test") {
-				v.tests.Push(name)
+				v.tests = append(v.tests, name)
 			} else if strings.HasPrefix(name, "Benchmark") {
-				v.benchmarks.Push(name)
+				v.benchmarks = append(v.benchmarks, name)
 			}
 		}
 		return nil
@@ -674,11 +670,11 @@ func parse_go_file_contents(filePath string, test bool) (*go_file_contents_t, os
 	// Extract imported packages
 	var importedPackages []string
 	{
-		importedPackages = make([]string, v.importSpecs.Len())
+		importedPackages = make([]string, len(v.importSpecs))
 
 		for i, importSpec := range v.importSpecs {
 			// The value has format: DOUBLE-QUOTE .* DOUBLE-QUOTE
-			val := string(importSpec.(*ast.ImportSpec).Path.Value)
+			val := string(importSpec.Path.Value)
 			if (len(val) <= 2) || (val[0] != '"') || (val[len(val)-1] != '"') {
 				// This should never happen
 				return nil, os.NewError(filePath + ": an import spec lacks double-quotes")

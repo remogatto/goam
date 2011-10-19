@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/vector"
 	"fmt"
 	"io"
 	"sort"
@@ -60,18 +59,18 @@ func (info *info_t) Print(w io.Writer) {
 			haveEmptyLine = false
 
 			if *flag_verbose {
-				var sources vector.StringVector
+				var sources []string
 
 				var unit *compilation_unit_t
 				for _, unit = range lib.sources {
 					for _, src := range unit.sources {
-						sources.Push(src.Path())
+						sources = append(sources, src.Path())
 					}
 				}
 
 				if lib.makefile_orNil != nil {
 					for _, src := range lib.makefile_orNil.sources {
-						sources.Push(src.Path())
+						sources = append(sources, src.Path())
 					}
 				}
 
@@ -147,18 +146,18 @@ func printExecutables(w io.Writer, tag string, allowVerbose bool, executables ma
 			*haveEmptyLine = false
 
 			if *flag_verbose && allowVerbose {
-				var sources vector.StringVector
+				var sources []string
 
 				var unit *compilation_unit_t
 				for _, unit = range exe.sources {
 					for _, src := range unit.sources {
-						sources.Push(src.Path())
+						sources = append(sources, src.Path())
 					}
 				}
 
 				if exe.makefile_orNil != nil {
 					for _, src := range exe.makefile_orNil.sources {
-						sources.Push(src.Path())
+						sources = append(sources, src.Path())
 					}
 				}
 
