@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -83,24 +84,23 @@ func initArch() {
 	goLinker_exe = &Executable{name: goLinker_name}
 }
 
-
 var goCompilerVersion *uint = nil
 
 // Requires Go release.2010-12-15.1
 const min_compiler_version_for_cgo = 6980
 
-func getGoCompilerVersion() (uint, os.Error) {
+func getGoCompilerVersion() (uint, error) {
 	if goCompilerVersion == nil {
 		args := []string{goCompiler_exe.name, "-V"}
 		stdout, _, err := goCompiler_exe.run(args, /*dir*/ "", /*in*/ "", /*mergeStdoutAndStderr*/ true)
 		if err != nil {
-			return 0, os.NewError("failed to determine Go compiler version: " + err.String())
+			return 0, errors.New("failed to determine Go compiler version: " + err.Error())
 		}
 
 		stdout = strings.TrimSpace(stdout)
 		var stdout_split []string = strings.Split(stdout, " ")
 		if len(stdout_split) < 3 {
-			return 0, os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\"" +
+			return 0, errors.New("failed to extract [Go compiler version] from string \"" + stdout + "\"" +
 				" (possible cause: you didn't have the Mercurial versioning system installed when you were compiling the Go distribution)")
 		}
 
@@ -109,7 +109,7 @@ func getGoCompilerVersion() (uint, os.Error) {
 			version, err = strconv.Atoui(strings.TrimRight(stdout_split[3], "+"))
 		}
 		if err != nil {
-			return 0, os.NewError("failed to extract [Go compiler version] from string \"" + stdout + "\"")
+			return 0, errors.New("failed to extract [Go compiler version] from string \"" + stdout + "\"")
 		}
 
 		goCompilerVersion = new(uint)

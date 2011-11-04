@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,15 +20,15 @@ type object_t interface {
 	Mtime() int64
 	UpdateFileSystemModel()
 
-	InferObjects(updateTests bool) os.Error
+	InferObjects(updateTests bool) error
 	PrintDependencies(w io.Writer)
 
 	Info(info *info_t)
-	Make() os.Error
-	MakeTests() os.Error
-	RunTests(testPattern, benchPattern string, errors *[]os.Error)
-	Clean() os.Error
-	GoFmt(files *[]string) os.Error
+	Make() error
+	MakeTests() error
+	RunTests(testPattern, benchPattern string, errors *[]error)
+	Clean() error
+	GoFmt(files *[]string) error
 }
 
 // A file system entry.
@@ -52,9 +53,9 @@ type entry_t struct {
 type config_file_t struct {
 	entry_t
 	parent                *dir_t
-	targetPackage_orEmpty string // Empty string means the target package is unspecified
+	targetPackage_orEmpty string          // Empty string means the target package is unspecified
 	packageFiles_orNil    map[string]byte // A set of file names, each name ends with ".go".
-	                                      // A nil value means "all Go files in the directory".
+	// A nil value means "all Go files in the directory".
 }
 
 // Represents a FILE.o, FILE.8, FILE.6, etc
@@ -87,7 +88,6 @@ type executable_t struct {
 	testImportPath_orEmpty string
 	nowBuilding            bool
 }
-
 
 // =======
 // entry_t
@@ -154,12 +154,11 @@ func (e *entry_t) UpdateFileInfo() {
 	}
 }
 
-
 // =============
 // config_file_t
 // =============
 
-func new_config_file(entry entry_t, parent *dir_t) (*config_file_t, os.Error) {
+func new_config_file(entry entry_t, parent *dir_t) (*config_file_t, error) {
 	config := &config_file_t{
 		entry_t: entry,
 		parent:  parent,
@@ -168,7 +167,7 @@ func new_config_file(entry entry_t, parent *dir_t) (*config_file_t, os.Error) {
 	if parent.config_orNil == nil {
 		parent.config_orNil = config
 	} else {
-		return nil, os.NewError("directory \"" + parent.path + "\" contains multiple config files")
+		return nil, errors.New("directory \"" + parent.path + "\" contains multiple config files")
 	}
 
 	newObjects[config] = 0
@@ -179,11 +178,11 @@ func (f *config_file_t) UpdateFileSystemModel() {
 	f.UpdateFileInfo()
 }
 
-func (f *config_file_t) InferObjects(updateTests bool) os.Error {
+func (f *config_file_t) InferObjects(updateTests bool) error {
 	// Consistency check
 	if f.packageFiles_orNil != nil {
 		if len(f.targetPackage_orEmpty) == 0 {
-			return os.NewError("configuration file \"" + f.path + "\" specifies package files, but does not specify the package")
+			return errors.New("configuration file \"" + f.path + "\" specifies package files, but does not specify the package")
 		}
 	}
 
@@ -198,23 +197,23 @@ func (f *config_file_t) Info(info *info_t) {
 	return
 }
 
-func (f *config_file_t) Make() os.Error {
+func (f *config_file_t) Make() error {
 	return nil
 }
 
-func (f *config_file_t) MakeTests() os.Error {
+func (f *config_file_t) MakeTests() error {
 	return nil
 }
 
-func (f *config_file_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+func (f *config_file_t) RunTests(testPattern, benchPattern string, errors *[]error) {
 	return
 }
 
-func (f *config_file_t) Clean() os.Error {
+func (f *config_file_t) Clean() error {
 	return nil
 }
 
-func (f *config_file_t) GoFmt(files *[]string) os.Error {
+func (f *config_file_t) GoFmt(files *[]string) error {
 	return nil
 }
 
@@ -229,7 +228,6 @@ func (f *config_file_t) ignoresGoFile(g go_source_code_t) bool {
 	_, present := packageFiles[g.Name()]
 	return !present
 }
-
 
 // ==================
 // compilation_unit_t
@@ -260,7 +258,7 @@ func (u *compilation_unit_t) UpdateFileSystemModel() {
 	u.UpdateFileInfo()
 }
 
-func (u *compilation_unit_t) InferObjects(updateTests bool) os.Error {
+func (u *compilation_unit_t) InferObjects(updateTests bool) error {
 	return nil
 }
 
@@ -277,13 +275,13 @@ func (u *compilation_unit_t) Info(info *info_t) {
 	return
 }
 
-func (u *compilation_unit_t) Make() os.Error {
+func (u *compilation_unit_t) Make() error {
 	if u.built {
 		return nil
 	}
 
 	if u.nowBuilding {
-		return os.NewError("circular dependency involving \"" + u.path + "\"")
+		return errors.New("circular dependency involving \"" + u.path + "\"")
 	}
 	u.nowBuilding = true
 	defer func() { u.nowBuilding = false }()
@@ -348,7 +346,7 @@ func (u *compilation_unit_t) Make() os.Error {
 				missing[i] = src.Path()
 			}
 			msg := fmt.Sprintf("unable to build \"%s\": missing files %v", u.path, missing)
-			return os.NewError(msg)
+			return errors.New(msg)
 		}
 	}
 
@@ -381,7 +379,7 @@ func (u *compilation_unit_t) Make() os.Error {
 
 		u.UpdateFileInfo()
 		if !u.exists {
-			return os.NewError("failed to build \"" + u.path + "\"")
+			return errors.New("failed to build \"" + u.path + "\"")
 		}
 	}
 
@@ -389,16 +387,16 @@ func (u *compilation_unit_t) Make() os.Error {
 	return nil
 }
 
-func (u *compilation_unit_t) MakeTests() os.Error {
+func (u *compilation_unit_t) MakeTests() error {
 	return nil
 }
 
-func (u *compilation_unit_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+func (u *compilation_unit_t) RunTests(testPattern, benchPattern string, errors *[]error) {
 	return
 }
 
-func (u *compilation_unit_t) Clean() os.Error {
-	var err os.Error
+func (u *compilation_unit_t) Clean() error {
+	var err error
 	if u.exists {
 		if *flag_debug {
 			println("remove:", u.path)
@@ -414,10 +412,9 @@ func (u *compilation_unit_t) Clean() os.Error {
 	return err
 }
 
-func (u *compilation_unit_t) GoFmt(files *[]string) os.Error {
+func (u *compilation_unit_t) GoFmt(files *[]string) error {
 	return nil
 }
-
 
 // =========
 // library_t
@@ -444,9 +441,9 @@ func (l *library_t) addCompilationUnit(u *compilation_unit_t) {
 	l.sources = append(l.sources, u)
 }
 
-func (l *library_t) addMakefile(m *makefile_t) os.Error {
+func (l *library_t) addMakefile(m *makefile_t) error {
 	if l.makefile_orNil != nil {
-		return os.NewError("library \"" + l.path + "\" is a product of more than one Makefile")
+		return errors.New("library \"" + l.path + "\" is a product of more than one Makefile")
 	}
 
 	l.makefile_orNil = m
@@ -457,7 +454,7 @@ func (l *library_t) UpdateFileSystemModel() {
 	l.UpdateFileInfo()
 }
 
-func (l *library_t) InferObjects(updateTests bool) os.Error {
+func (l *library_t) InferObjects(updateTests bool) error {
 	return nil
 }
 
@@ -485,13 +482,13 @@ func (l *library_t) Info(info *info_t) {
 	}
 }
 
-func (l *library_t) Make() os.Error {
+func (l *library_t) Make() error {
 	if l.built {
 		return nil
 	}
 
 	if l.nowBuilding {
-		return os.NewError("circular dependency involving \"" + l.path + "\"")
+		return errors.New("circular dependency involving \"" + l.path + "\"")
 	}
 	l.nowBuilding = true
 	defer func() { l.nowBuilding = false }()
@@ -547,7 +544,7 @@ func (l *library_t) Make() os.Error {
 
 			l.UpdateFileInfo()
 			if !l.exists {
-				return os.NewError("failed to build \"" + l.path + "\"")
+				return errors.New("failed to build \"" + l.path + "\"")
 			}
 		} else {
 			err := l.makefile_orNil.Make()
@@ -556,7 +553,7 @@ func (l *library_t) Make() os.Error {
 			}
 
 			if !l.exists {
-				return os.NewError("failed to build \"" + l.path + "\"")
+				return errors.New("failed to build \"" + l.path + "\"")
 			}
 		}
 	}
@@ -565,16 +562,16 @@ func (l *library_t) Make() os.Error {
 	return nil
 }
 
-func (l *library_t) MakeTests() os.Error {
+func (l *library_t) MakeTests() error {
 	return nil
 }
 
-func (l *library_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+func (l *library_t) RunTests(testPattern, benchPattern string, errors *[]error) {
 	return
 }
 
-func (l *library_t) Clean() os.Error {
-	var err os.Error
+func (l *library_t) Clean() error {
+	var err error
 	if l.exists {
 		if *flag_debug {
 			println("remove:", l.path)
@@ -590,7 +587,7 @@ func (l *library_t) Clean() os.Error {
 	return err
 }
 
-func (l *library_t) Install(importPath string) os.Error {
+func (l *library_t) Install(importPath string) error {
 	err := l.Make()
 	if err != nil {
 		return err
@@ -616,7 +613,7 @@ func (l *library_t) Install(importPath string) os.Error {
 	return nil
 }
 
-func (l *library_t) Uninstall(importPath string) os.Error {
+func (l *library_t) Uninstall(importPath string) error {
 	dir, base := pathutil.Split(importPath)
 
 	installPath := pathutil.Join(libInstallRoot, dir, base+".a")
@@ -640,10 +637,9 @@ func (l *library_t) Uninstall(importPath string) os.Error {
 	return nil
 }
 
-func (l *library_t) GoFmt(files *[]string) os.Error {
+func (l *library_t) GoFmt(files *[]string) error {
 	return nil
 }
-
 
 // ============
 // executable_t
@@ -670,16 +666,16 @@ func (e *executable_t) addCompilationUnit(u *compilation_unit_t) {
 	e.sources = append(e.sources, u)
 }
 
-func (e *executable_t) addMakefile(m *makefile_t) os.Error {
+func (e *executable_t) addMakefile(m *makefile_t) error {
 	if e.makefile_orNil != nil {
-		return os.NewError("executable \"" + e.path + "\" is a product of more than one Makefile")
+		return errors.New("executable \"" + e.path + "\" is a product of more than one Makefile")
 	}
 
 	e.makefile_orNil = m
 	return nil
 }
 
-func (e *executable_t) collectLibs() ([]*dir_t, os.Error) {
+func (e *executable_t) collectLibs() ([]*dir_t, error) {
 	var imports = make(map[string]*package_resolution_t)
 
 	// The set of import statements to process
@@ -767,7 +763,7 @@ func (e *executable_t) UpdateFileSystemModel() {
 	e.UpdateFileInfo()
 }
 
-func (e *executable_t) InferObjects(updateTests bool) os.Error {
+func (e *executable_t) InferObjects(updateTests bool) error {
 	return nil
 }
 
@@ -793,11 +789,11 @@ func (e *executable_t) Info(info *info_t) {
 	}
 }
 
-func (e *executable_t) doMake(installMode bool) os.Error {
-	var err os.Error
+func (e *executable_t) doMake(installMode bool) error {
+	var err error
 
 	if e.nowBuilding {
-		return os.NewError("circular dependency involving \"" + e.path + "\"")
+		return errors.New("circular dependency involving \"" + e.path + "\"")
 	}
 	e.nowBuilding = true
 	defer func() { e.nowBuilding = false }()
@@ -864,7 +860,7 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 			if !installMode {
 				e.UpdateFileInfo()
 				if !e.exists {
-					return os.NewError("failed to build \"" + e.path + "\"")
+					return errors.New("failed to build \"" + e.path + "\"")
 				}
 			}
 		} else {
@@ -881,7 +877,7 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 			}
 
 			if !e.exists {
-				return os.NewError("failed to build \"" + e.path + "\"")
+				return errors.New("failed to build \"" + e.path + "\"")
 			}
 		}
 	}
@@ -889,7 +885,7 @@ func (e *executable_t) doMake(installMode bool) os.Error {
 	return nil
 }
 
-func (e *executable_t) Make() os.Error {
+func (e *executable_t) Make() error {
 	// If 'e' is not a test/benchmark
 	if len(e.testImportPath_orEmpty) == 0 {
 		err := e.doMake( /*installMode*/ false)
@@ -901,7 +897,7 @@ func (e *executable_t) Make() os.Error {
 	return nil
 }
 
-func (e *executable_t) MakeTests() os.Error {
+func (e *executable_t) MakeTests() error {
 	// If 'e' is a test/benchmark
 	if len(e.testImportPath_orEmpty) > 0 {
 		err := e.doMake( /*installMode*/ false)
@@ -913,7 +909,7 @@ func (e *executable_t) MakeTests() os.Error {
 	return nil
 }
 
-func (e *executable_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+func (e *executable_t) RunTests(testPattern, benchPattern string, errors *[]error) {
 	// If 'e' is a test
 	if len(e.testImportPath_orEmpty) > 0 {
 		exe := &Executable{name: "./" + e.name, noLookup: true}
@@ -937,8 +933,8 @@ func (e *executable_t) RunTests(testPattern, benchPattern string, errors *[]os.E
 	}
 }
 
-func (e *executable_t) Clean() os.Error {
-	var err os.Error
+func (e *executable_t) Clean() error {
+	var err error
 	if e.exists && (len(e.sources) >= 1) {
 		if *flag_debug {
 			println("remove:", e.path)
@@ -954,10 +950,10 @@ func (e *executable_t) Clean() os.Error {
 	return err
 }
 
-func (e *executable_t) Install() os.Error {
+func (e *executable_t) Install() error {
 	// Error if 'e' is a test/benchmark
 	if len(e.testImportPath_orEmpty) != 0 {
-		return os.NewError("cannot install executable \"" + e.path + "\" because it is a test")
+		return errors.New("cannot install executable \"" + e.path + "\" because it is a test")
 	}
 
 	err := e.doMake( /*installMode*/ true)
@@ -969,7 +965,7 @@ func (e *executable_t) Install() os.Error {
 
 }
 
-func (e *executable_t) Uninstall() os.Error {
+func (e *executable_t) Uninstall() error {
 	installPath := pathutil.Join(exeInstallDir, e.name)
 
 	// Delete the file (if it exists)
@@ -987,6 +983,6 @@ func (e *executable_t) Uninstall() os.Error {
 	return nil
 }
 
-func (e *executable_t) GoFmt(files *[]string) os.Error {
+func (e *executable_t) GoFmt(files *[]string) error {
 	return nil
 }

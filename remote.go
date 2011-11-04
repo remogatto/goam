@@ -1,12 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	pathutil "path"
 	"strings"
 )
-
 
 // Enumeration of supported repository kinds
 const (
@@ -25,7 +25,7 @@ type repository_t interface {
 	KindString() string
 	Path() string
 	DashboardPath() string
-	CloneOrUpdate() (string, bool, os.Error)
+	CloneOrUpdate() (string, bool, error)
 }
 
 type repository_github_t struct {
@@ -36,14 +36,12 @@ type repository_bitbucket_t struct {
 	repositoryPath string
 }
 
-
 // All remote packages defined by configuration files
 var remotePackages []*remote_package_t = nil
 var remotePackages_byImport = make(map[string]*remote_package_t)
 var remotePackages_byRepository = make(map[string]*remote_package_t)
 
-
-func installAllRemotePackages() os.Error {
+func installAllRemotePackages() error {
 	for _, remotePackage := range remotePackages {
 		err := remotePackage.Install()
 		if err != nil {
@@ -54,7 +52,6 @@ func installAllRemotePackages() os.Error {
 	return nil
 }
 
-
 // ================
 // remote_package_t
 // ================
@@ -63,11 +60,11 @@ func new_remotePackage(importPaths []string, repository repository_t, installCmd
 	return &remote_package_t{importPaths, repository, installCmd}
 }
 
-func (p *remote_package_t) Check() os.Error {
+func (p *remote_package_t) Check() error {
 	// Check for meaningless remote-package definitions
 	for _, importPath := range p.importPaths {
 		if pkg, defined := importPathResolutionTable[importPath]; defined {
-			return os.NewError("import path \"" + importPath + "\" maps to library \"" + pkg.lib.path + "\"," +
+			return errors.New("import path \"" + importPath + "\" maps to library \"" + pkg.lib.path + "\"," +
 				" there is no need to define a remote package")
 		}
 	}
@@ -75,8 +72,8 @@ func (p *remote_package_t) Check() os.Error {
 	return nil
 }
 
-func (p *remote_package_t) Install() os.Error {
-	var err os.Error
+func (p *remote_package_t) Install() error {
+	var err error
 
 	installationRequired := false
 	for _, importPath := range p.importPaths {
@@ -105,7 +102,7 @@ func (p *remote_package_t) Install() os.Error {
 		for _, importPath := range p.importPaths {
 			_, err = resolvePackage(importPath, /*test*/ false)
 			if err != nil {
-				return os.NewError("remote package \"" + p.repository.Path() + "\"" +
+				return errors.New("remote package \"" + p.repository.Path() + "\"" +
 					" failed to provide the library \"" + importPath + "\"")
 			}
 		}
@@ -117,7 +114,6 @@ func (p *remote_package_t) Install() os.Error {
 
 	return nil
 }
-
 
 // ===================
 // repository_github_t
@@ -147,8 +143,8 @@ var git_exe = &Executable{
 	name: "git",
 }
 
-func (r *repository_github_t) CloneOrUpdate() (string, bool, os.Error) {
-	var err os.Error
+func (r *repository_github_t) CloneOrUpdate() (string, bool, error) {
+	var err error
 
 	user, project := pathutil.Split(r.repositoryPath)
 	user = pathutil.Clean(user)
@@ -188,7 +184,6 @@ func (r *repository_github_t) CloneOrUpdate() (string, bool, os.Error) {
 	return projectDir, true, nil
 }
 
-
 // ======================
 // repository_bitbucket_t
 // ======================
@@ -217,8 +212,8 @@ var hg_exe = &Executable{
 	name: "hg",
 }
 
-func (r *repository_bitbucket_t) CloneOrUpdate() (string, bool, os.Error) {
-	var err os.Error
+func (r *repository_bitbucket_t) CloneOrUpdate() (string, bool, error) {
+	var err error
 
 	user, project := pathutil.Split(r.repositoryPath)
 	user = pathutil.Clean(user)
@@ -269,30 +264,29 @@ func (r *repository_bitbucket_t) CloneOrUpdate() (string, bool, os.Error) {
 	return projectDir, true, nil
 }
 
-
 // =================
 // Utility functions
 // =================
 
-func checkRepositoryPath(kind int, path string) os.Error {
+func checkRepositoryPath(kind int, path string) error {
 	switch kind {
 	case GITHUB:
 		if strings.Contains(path, "://") {
-			return os.NewError("invalid GitHub repository path (try removing \"http://\" or similar prefixes)")
+			return errors.New("invalid GitHub repository path (try removing \"http://\" or similar prefixes)")
 		}
 		if strings.HasPrefix(path, "github.com") {
-			return os.NewError("invalid GitHub repository path (try without the \"github.com\" prefix)")
+			return errors.New("invalid GitHub repository path (try without the \"github.com\" prefix)")
 		}
 		if strings.HasSuffix(path, ".git") {
-			return os.NewError("invalid GitHub repository path (try without the \".git\" suffix)")
+			return errors.New("invalid GitHub repository path (try without the \".git\" suffix)")
 		}
 
 	case BITBUCKET:
 		if strings.Contains(path, "://") {
-			return os.NewError("invalid BitBucket repository path (try removing \"http://\" or similar prefixes)")
+			return errors.New("invalid BitBucket repository path (try removing \"http://\" or similar prefixes)")
 		}
 		if strings.HasPrefix(path, "bitbucket.org") {
-			return os.NewError("invalid BitBucket repository path (try without the \"bitbucket.org\" prefix)")
+			return errors.New("invalid BitBucket repository path (try without the \"bitbucket.org\" prefix)")
 		}
 
 	default:

@@ -1,10 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	pathutil "path"
 	"strings"
 )
@@ -32,12 +32,11 @@ type makefile_contents_t struct {
 	cgo     bool
 }
 
-
 // ==========
 // makefile_t
 // ==========
 
-func new_makefile(entry entry_t, parent *dir_t) (*makefile_t, os.Error) {
+func new_makefile(entry entry_t, parent *dir_t) (*makefile_t, error) {
 	makefile := &makefile_t{
 		entry_t: entry,
 		parent:  parent,
@@ -47,7 +46,7 @@ func new_makefile(entry entry_t, parent *dir_t) (*makefile_t, os.Error) {
 	if parent.makefile_orNil == nil {
 		parent.makefile_orNil = makefile
 	} else {
-		return nil, os.NewError("directory \"" + parent.path + "\" contains multiple makefiles")
+		return nil, errors.New("directory \"" + parent.path + "\" contains multiple makefiles")
 	}
 
 	newObjects[makefile] = 0
@@ -58,9 +57,9 @@ func (m *makefile_t) UpdateFileSystemModel() {
 	m.UpdateFileInfo()
 }
 
-func (m *makefile_t) Contents() (*makefile_contents_t, os.Error) {
+func (m *makefile_t) Contents() (*makefile_contents_t, error) {
 	if m.contents == nil {
-		var err os.Error
+		var err error
 		m.contents, err = read_makefile_contents(m.path, m.parent.path)
 		if err != nil {
 			return nil, err
@@ -70,7 +69,7 @@ func (m *makefile_t) Contents() (*makefile_contents_t, os.Error) {
 	return m.contents, nil
 }
 
-func (m *makefile_t) InferObjects(updateTests bool) os.Error {
+func (m *makefile_t) InferObjects(updateTests bool) error {
 	if !m.exists {
 		return nil
 	}
@@ -91,22 +90,22 @@ func (m *makefile_t) InferObjects(updateTests bool) os.Error {
 			goFile = pathutil.Clean(goFile)
 
 			if !strings.HasSuffix(goFile, ".go") {
-				return os.NewError("makefile \"" + m.Path() + "\": Go file \"" + goFile + "\"' should have .go extension")
+				return errors.New("makefile \"" + m.Path() + "\": Go file \"" + goFile + "\"' should have .go extension")
 			}
 
 			var _src object_t = m.parent.getObject_orNil(strings.Split(goFile, "/"))
 
 			var src go_source_code_t
 			if _src == nil {
-				return os.NewError("failed to find file \"" + goFile + "\"")
+				return errors.New("failed to find file \"" + goFile + "\"")
 			} else {
 				var isSrc bool
 				src, isSrc = _src.(go_source_code_t)
 				if !isSrc {
-					return os.NewError("file \"" + _src.Path() + "\" was expected to be a Go file")
+					return errors.New("file \"" + _src.Path() + "\" was expected to be a Go file")
 				}
 				if !src.Exists() {
-					return os.NewError("file \"" + _src.Path() + "\" does not exist")
+					return errors.New("file \"" + _src.Path() + "\" does not exist")
 				}
 			}
 
@@ -172,13 +171,13 @@ var make_exe = &Executable{
 	name: "make",
 }
 
-func (m *makefile_t) Make() os.Error {
+func (m *makefile_t) Make() error {
 	if m.built {
 		return nil
 	}
 
 	if m.nowBuilding {
-		return os.NewError("circular dependency involving \"" + m.path + "\"")
+		return errors.New("circular dependency involving \"" + m.path + "\"")
 	}
 	m.nowBuilding = true
 	defer func() { m.nowBuilding = false }()
@@ -212,7 +211,7 @@ func (m *makefile_t) Make() os.Error {
 	return nil
 }
 
-func (m *makefile_t) MakeInstall() os.Error {
+func (m *makefile_t) MakeInstall() error {
 	// Build all prerequisites and build the target
 	err := m.Make()
 	if err != nil {
@@ -231,7 +230,7 @@ func (m *makefile_t) MakeInstall() os.Error {
 	return nil
 }
 
-func (m *makefile_t) MakeTests() os.Error {
+func (m *makefile_t) MakeTests() error {
 	args := []string{make_exe.name, "-f", m.name, "test"}
 	err := make_exe.runSimply(args, /*dir*/ m.parent.path, /*dontPrint*/ false)
 	if err != nil {
@@ -244,14 +243,14 @@ func (m *makefile_t) MakeTests() os.Error {
 	return nil
 }
 
-func (m *makefile_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+func (m *makefile_t) RunTests(testPattern, benchPattern string, errors *[]error) {
 	err := m.MakeTests()
 	if err != nil {
 		*errors = append(*errors, err)
 	}
 }
 
-func (m *makefile_t) Clean() os.Error {
+func (m *makefile_t) Clean() error {
 	args := []string{make_exe.name, "-f", m.name, "clean"}
 	err := make_exe.runSimply(args, /*dir*/ m.parent.path, /*dontPrint*/ false)
 	if err != nil {
@@ -264,10 +263,9 @@ func (m *makefile_t) Clean() os.Error {
 	return nil
 }
 
-func (m *makefile_t) GoFmt(files *[]string) os.Error {
+func (m *makefile_t) GoFmt(files *[]string) error {
 	return nil
 }
-
 
 // ===================
 // makefile_contents_t
@@ -279,7 +277,7 @@ const make_print_rule = "\n\n" + make_print_ruleName + ": \n" +
 	"\t@echo $(GOFILES)\n" +
 	"\t@echo $(CGOFILES)\n"
 
-func read_makefile_contents(path, dir string) (*makefile_contents_t, os.Error) {
+func read_makefile_contents(path, dir string) (*makefile_contents_t, error) {
 	var makefileText string
 	{
 		_makefileText, err := ioutil.ReadFile(path)
@@ -296,12 +294,12 @@ func read_makefile_contents(path, dir string) (*makefile_contents_t, os.Error) {
 		args := []string{make_exe.name, "-f", "-", make_print_ruleName}
 		makeOutput, _, err := make_exe.run(args, dir, (makefileText + make_print_rule), /*mergeStdoutAndStderr*/ false)
 		if err != nil {
-			return nil, os.NewError("failed to extract needed variables from \"" + path + "\": " + err.String())
+			return nil, errors.New("failed to extract needed variables from \"" + path + "\": " + err.Error())
 		}
 
 		makeOutput_lines = strings.Split(makeOutput, "\n")
 		if len(makeOutput_lines) < 3 {
-			return nil, os.NewError("failed to extract needed variables from \"" + path + "\"")
+			return nil, errors.New("failed to extract needed variables from \"" + path + "\"")
 		}
 	}
 
@@ -349,7 +347,7 @@ func read_makefile_contents(path, dir string) (*makefile_contents_t, os.Error) {
 					" Found Go compiler has version %d."+
 					" Minimum version supported by GOAM is %d.",
 					path, compilerVersion, min_compiler_version_for_cgo)
-				return nil, os.NewError(msg)
+				return nil, errors.New(msg)
 			}
 		}
 	}
@@ -378,7 +376,7 @@ func read_makefile_contents(path, dir string) (*makefile_contents_t, os.Error) {
 		kind = MAKEFILE_PKG
 
 	case cmd && pkg:
-		return nil, os.NewError("the makefile \"" + path + "\" contains both 'Make.cmd' and 'Make.pkg'")
+		return nil, errors.New("the makefile \"" + path + "\" contains both 'Make.cmd' and 'Make.pkg'")
 
 	default:
 		if *flag_debug {

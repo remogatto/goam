@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -17,7 +18,7 @@ import (
 type go_source_code_t interface {
 	object_t
 	Parent() *dir_t
-	Contents() (*go_file_contents_t, os.Error)
+	Contents() (*go_file_contents_t, error)
 }
 
 // Represents a FILE.go
@@ -53,7 +54,6 @@ type go_file_contents_t struct {
 	benchmarks       []string
 }
 
-
 // =========
 // go_file_t
 // =========
@@ -71,9 +71,9 @@ func (f *go_file_t) Parent() *dir_t {
 	return f.parent
 }
 
-func (f *go_file_t) Contents() (*go_file_contents_t, os.Error) {
+func (f *go_file_t) Contents() (*go_file_contents_t, error) {
 	if f.contents == nil {
-		var err os.Error
+		var err error
 		f.contents, err = parse_go_file_contents(f.path, /*test*/ false)
 		if err != nil {
 			return nil, err
@@ -87,7 +87,7 @@ func (f *go_file_t) UpdateFileSystemModel() {
 	f.UpdateFileInfo()
 }
 
-func inferObjects(f go_source_code_t, test bool) os.Error {
+func inferObjects(f go_source_code_t, test bool) error {
 	if strings.HasSuffix(f.Path(), "_test/main.go") {
 		return nil
 	}
@@ -105,7 +105,7 @@ func inferObjects(f go_source_code_t, test bool) os.Error {
 	}
 
 	if test && (contents.packageName == "main") {
-		return os.NewError("cannot perform tests if the package is \"main\"")
+		return errors.New("cannot perform tests if the package is \"main\"")
 	}
 
 	// If there is no Makefile:
@@ -164,13 +164,13 @@ func inferObjects(f go_source_code_t, test bool) os.Error {
 			{
 				config := f.Parent().config_orNil
 				if config == nil {
-					return os.NewError("directory \"" + f.Parent().path + "\" requires a " + configFileName + " file" +
+					return errors.New("directory \"" + f.Parent().path + "\" requires a " + configFileName + " file" +
 						" with a specification of the target package or executable")
 				}
 
 				target = config.targetPackage_orEmpty
 				if len(target) == 0 {
-					return os.NewError("config file for directory \"" + f.Parent().path + "\" does not specify the target package")
+					return errors.New("config file for directory \"" + f.Parent().path + "\" does not specify the target package")
 				}
 			}
 
@@ -235,7 +235,7 @@ func inferObjects(f go_source_code_t, test bool) os.Error {
 	return nil
 }
 
-func (f *go_file_t) InferObjects(updateTests bool) os.Error {
+func (f *go_file_t) InferObjects(updateTests bool) error {
 	err := inferObjects(f, /*test*/ false)
 	if err != nil {
 		return err
@@ -259,26 +259,26 @@ func (f *go_file_t) Info(info *info_t) {
 	return
 }
 
-func (f *go_file_t) Make() os.Error {
+func (f *go_file_t) Make() error {
 	return nil
 }
 
-func (f *go_file_t) MakeTests() os.Error {
+func (f *go_file_t) MakeTests() error {
 	return nil
 }
 
-func (f *go_file_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+func (f *go_file_t) RunTests(testPattern, benchPattern string, errors *[]error) {
 	return
 }
 
-func (f *go_file_t) Clean() os.Error {
+func (f *go_file_t) Clean() error {
 	remove := false
 	if f.name == "_testmain.go" {
 		remove = true
 	}
 
 	if remove {
-		var err os.Error
+		var err error
 		if f.exists {
 			if *flag_debug {
 				println("remove:", f.path)
@@ -295,7 +295,7 @@ func (f *go_file_t) Clean() os.Error {
 	return nil
 }
 
-func (f *go_file_t) GoFmt(files *[]string) os.Error {
+func (f *go_file_t) GoFmt(files *[]string) error {
 	if _, disabled := disabledGoFmt[pathutil.Clean(f.path)]; disabled {
 		if *flag_debug {
 			println("disabled gofmt:", f.path)
@@ -315,7 +315,6 @@ func (f *go_file_t) GoFmt(files *[]string) os.Error {
 	return nil
 }
 
-
 // =========
 // go_test_t
 // =========
@@ -334,9 +333,9 @@ func (t *go_test_t) Parent() *dir_t {
 	return t.parent
 }
 
-func (t *go_test_t) Contents() (*go_file_contents_t, os.Error) {
+func (t *go_test_t) Contents() (*go_file_contents_t, error) {
 	if t.contents == nil {
-		var err os.Error
+		var err error
 		t.contents, err = parse_go_file_contents(t.path, /*test*/ true)
 		if err != nil {
 			return nil, err
@@ -350,7 +349,7 @@ func (t *go_test_t) UpdateFileSystemModel() {
 	t.UpdateFileInfo()
 }
 
-func (t *go_test_t) InferObjects(updateTests bool) os.Error {
+func (t *go_test_t) InferObjects(updateTests bool) error {
 	return inferObjects(t, /*test*/ true)
 }
 
@@ -362,23 +361,23 @@ func (t *go_test_t) Info(info *info_t) {
 	return
 }
 
-func (t *go_test_t) Make() os.Error {
+func (t *go_test_t) Make() error {
 	return nil
 }
 
-func (t *go_test_t) MakeTests() os.Error {
+func (t *go_test_t) MakeTests() error {
 	return nil
 }
 
-func (t *go_test_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+func (t *go_test_t) RunTests(testPattern, benchPattern string, errors *[]error) {
 	return
 }
 
-func (t *go_test_t) Clean() os.Error {
+func (t *go_test_t) Clean() error {
 	return nil
 }
 
-func (t *go_test_t) GoFmt(files *[]string) os.Error {
+func (t *go_test_t) GoFmt(files *[]string) error {
 	if _, disabled := disabledGoFmt[pathutil.Clean(t.path)]; disabled {
 		if *flag_debug {
 			println("disabled gofmt:", t.path)
@@ -390,7 +389,6 @@ func (t *go_test_t) GoFmt(files *[]string) os.Error {
 
 	return nil
 }
-
 
 // =============
 // go_testMain_t
@@ -407,9 +405,9 @@ func new_go_testMain(entry entry_t, parent *dir_t, importPath string) *go_testMa
 	return t
 }
 
-func (t *go_testMain_t) setImportPath(importPath string) os.Error {
+func (t *go_testMain_t) setImportPath(importPath string) error {
 	if t.importPath != importPath {
-		return os.NewError("failed to generate \"" + t.path + "\": inconsistent import paths")
+		return errors.New("failed to generate \"" + t.path + "\": inconsistent import paths")
 	}
 
 	return nil
@@ -428,12 +426,12 @@ func (t *go_testMain_t) packageName() string {
 	return packageName
 }
 
-func (t *go_testMain_t) refreshIfNeeded() os.Error {
+func (t *go_testMain_t) refreshIfNeeded() error {
 	if t.refresh {
 		// Get the current source code
 		var oldContents []byte
 		if t.exists {
-			var err os.Error
+			var err error
 			oldContents, err = ioutil.ReadFile(t.path)
 			if err != nil {
 				return err
@@ -507,7 +505,7 @@ func (t *go_testMain_t) Parent() *dir_t {
 	return t.parent
 }
 
-func (t *go_testMain_t) Contents() (*go_file_contents_t, os.Error) {
+func (t *go_testMain_t) Contents() (*go_file_contents_t, error) {
 	err := t.refreshIfNeeded()
 	if err != nil {
 		return nil, err
@@ -527,8 +525,8 @@ func (t *go_testMain_t) UpdateFileSystemModel() {
 	t.UpdateFileInfo()
 }
 
-func (t *go_testMain_t) InferObjects(updateTests bool) os.Error {
-	var err os.Error
+func (t *go_testMain_t) InferObjects(updateTests bool) error {
+	var err error
 
 	// Generate and parse the source code
 	if updateTests {
@@ -583,20 +581,20 @@ func (t *go_testMain_t) Info(info *info_t) {
 	return
 }
 
-func (t *go_testMain_t) Make() os.Error {
+func (t *go_testMain_t) Make() error {
 	return nil
 }
 
-func (t *go_testMain_t) MakeTests() os.Error {
+func (t *go_testMain_t) MakeTests() error {
 	return nil
 }
 
-func (t *go_testMain_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+func (t *go_testMain_t) RunTests(testPattern, benchPattern string, errors *[]error) {
 	return
 }
 
-func (t *go_testMain_t) Clean() os.Error {
-	var err os.Error
+func (t *go_testMain_t) Clean() error {
+	var err error
 	if t.exists {
 		if *flag_debug {
 			println("remove:", t.path)
@@ -613,10 +611,9 @@ func (t *go_testMain_t) Clean() os.Error {
 
 }
 
-func (t *go_testMain_t) GoFmt(files *[]string) os.Error {
+func (t *go_testMain_t) GoFmt(files *[]string) error {
 	return nil
 }
-
 
 // ==================
 // go_file_contents_t
@@ -648,7 +645,7 @@ func (v *ast_visitor_t) Visit(node ast.Node) ast.Visitor {
 	return v
 }
 
-func parse_go_file_contents(filePath string, test bool) (*go_file_contents_t, os.Error) {
+func parse_go_file_contents(filePath string, test bool) (*go_file_contents_t, error) {
 	if *flag_debug {
 		println("parse:", filePath)
 	}
@@ -677,7 +674,7 @@ func parse_go_file_contents(filePath string, test bool) (*go_file_contents_t, os
 			val := string(importSpec.Path.Value)
 			if (len(val) <= 2) || (val[0] != '"') || (val[len(val)-1] != '"') {
 				// This should never happen
-				return nil, os.NewError(filePath + ": an import spec lacks double-quotes")
+				return nil, errors.New(filePath + ": an import spec lacks double-quotes")
 			}
 
 			// Strip the double-quotes
@@ -709,7 +706,7 @@ func parse_go_file_contents(filePath string, test bool) (*go_file_contents_t, os
 	return contents, nil
 }
 
-func (f *go_file_contents_t) makePrerequisites(testImportPath_orEmpty string) ([]*package_resolution_t, os.Error) {
+func (f *go_file_contents_t) makePrerequisites(testImportPath_orEmpty string) ([]*package_resolution_t, error) {
 	pkgs := make([]*package_resolution_t, 0, len(f.importedPackages))
 
 	for _, importedPackage := range f.importedPackages {

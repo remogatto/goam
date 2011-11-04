@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"exec"
 	"fmt"
 	"io/ioutil"
@@ -54,8 +55,8 @@ func addResourceUsage(taskName string, usage *syscall.Rusage) {
 
 func addSelf() {
 	// Remove any previous stats
-	taskStats["(self)"] = nil, false
-	taskStats["(self.gc)"] = nil, false
+	delete(taskStats, "(self)")
+	delete(taskStats, "(self.gc)")
 
 	// Enclose the following 5 lines in a comment
 	// if the compiler is unable to find 'syscall.Getrusage'
@@ -113,7 +114,6 @@ func printTimings(out *os.File) {
 	}
 }
 
-
 type Executable struct {
 	name     string
 	noLookup bool
@@ -125,7 +125,7 @@ type RunFlags struct {
 	dontPrintCmd          bool
 }
 
-func (e *Executable) runSimply(argv []string, dir string, dontPrintCmd bool) os.Error {
+func (e *Executable) runSimply(argv []string, dir string, dontPrintCmd bool) error {
 	flags := RunFlags{
 		stdin:        os.Stdin,
 		stdout:       os.Stdout,
@@ -139,7 +139,7 @@ func (e *Executable) runSimply(argv []string, dir string, dontPrintCmd bool) os.
 // Runs 'e' as separate process, waits until it finishes,
 // and returns the data the process sent to its output(s).
 // The argument 'in' comprises the command's input.
-func (e *Executable) run(argv []string, dir string, in string, mergeStdoutAndStderr bool) (stdout string, stderr string, err os.Error) {
+func (e *Executable) run(argv []string, dir string, in string, mergeStdoutAndStderr bool) (stdout string, stderr string, err error) {
 	stdin_r, stdin_w, err := os.Pipe()
 	if err != nil {
 		return "", "", err
@@ -166,7 +166,7 @@ func (e *Executable) run(argv []string, dir string, in string, mergeStdoutAndStd
 		}
 	}
 
-	errChan := make(chan os.Error, 3)
+	errChan := make(chan error, 3)
 	stdoutChan := make(chan []byte, 1)
 	stderrChan := make(chan []byte, 1)
 	{
@@ -254,15 +254,15 @@ func (e *Executable) run(argv []string, dir string, in string, mergeStdoutAndStd
 }
 
 // Runs 'e' as a separate process and waits until it finishes
-func (e *Executable) run_lowLevel(argv []string, dir string, flags RunFlags) os.Error {
+func (e *Executable) run_lowLevel(argv []string, dir string, flags RunFlags) error {
 	// Resolve 'e.fullpath' (if not resolved yet)
 	if len(e.fullPath) == 0 {
 		if (e.noLookup == false) || !strings.HasPrefix(e.name, "./") {
-			var err os.Error
+			var err error
 			e.fullPath, err = exec.LookPath(e.name)
 			if err != nil {
-				msg := "failed to lookup executable \"" + e.name + "\": " + err.String()
-				return os.NewError(msg)
+				msg := "failed to lookup executable \"" + e.name + "\": " + err.Error()
+				return errors.New(msg)
 			}
 		} else {
 			e.fullPath = e.name
@@ -298,7 +298,7 @@ func (e *Executable) run_lowLevel(argv []string, dir string, flags RunFlags) os.
 		addResourceUsage(e.name, waitMsg.Rusage)
 	}
 	if !waitMsg.Exited() {
-		return os.NewError(fmt.Sprintf("unable to obtain the exit status of \"%s\"", e.name))
+		return errors.New(fmt.Sprintf("unable to obtain the exit status of \"%s\"", e.name))
 	}
 	if waitMsg.ExitStatus() != 0 {
 		var errMsg string
@@ -307,7 +307,7 @@ func (e *Executable) run_lowLevel(argv []string, dir string, flags RunFlags) os.
 		} else {
 			errMsg = fmt.Sprintf("command \"%s\" run in directory \"%s\" returned an error", strings.Join(argv, " "), dir)
 		}
-		return os.NewError(errMsg)
+		return errors.New(errMsg)
 	}
 
 	return nil

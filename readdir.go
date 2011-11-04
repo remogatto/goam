@@ -1,12 +1,13 @@
 package main
 
 import (
+	"errors"
 	pathutil "path"
 	"os"
 	"strings"
 )
 
-func readDir() (*dir_t, os.Error) {
+func readDir() (*dir_t, error) {
 	name := "."
 
 	fileInfo, err := os.Lstat(name)
@@ -14,7 +15,7 @@ func readDir() (*dir_t, os.Error) {
 		return nil, err
 	}
 	if !fileInfo.IsDirectory() {
-		return nil, os.NewError("not a directory: " + name)
+		return nil, errors.New("not a directory: " + name)
 	}
 
 	dir := new_dir(new_entry(name, fileInfo), /*parent_orNil*/ nil)
@@ -26,7 +27,7 @@ func readDir() (*dir_t, os.Error) {
 	return dir, nil
 }
 
-func readDir_internal(dir *dir_t) os.Error {
+func readDir_internal(dir *dir_t) error {
 	if *flag_debug {
 		println("read dir:", dir.path)
 	}
@@ -63,7 +64,7 @@ func readDir_internal(dir *dir_t) os.Error {
 		}
 
 		var object object_t
-		var err os.Error
+		var err error
 
 		switch {
 		case entry.IsRegular():
@@ -98,7 +99,7 @@ func readDir_internal(dir *dir_t) os.Error {
 	if dir.parent_orNil == nil {
 		// The presence of sub-directories requires a config file or a Makefile
 		if ((numSubdirs - numTemporarySubdirs) > 0) && (dir.config_orNil == nil) && (dir.makefile_orNil == nil) {
-			return os.NewError("the root directory has one or more user sub-directories," +
+			return errors.New("the root directory has one or more user sub-directories," +
 				" therefore it requires a " + configFileName + " file or a Makefile")
 		}
 	}
@@ -129,7 +130,7 @@ func readDir_internal(dir *dir_t) os.Error {
 	return nil
 }
 
-func identifyFile(path string, fi *os.FileInfo, parent *dir_t) (object_t, os.Error) {
+func identifyFile(path string, fi *os.FileInfo, parent *dir_t) (object_t, error) {
 	var entry entry_t = new_entry(path, fi)
 
 	if strings.HasSuffix(fi.Name, "_test.go") {

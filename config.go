@@ -3,10 +3,10 @@ package main
 import (
 	"bytes"
 	eval "bitbucket.org/binet/go-eval/pkg/eval"
+	"errors"
 	"fmt"
 	"go/token"
 	"io/ioutil"
-	"os"
 	pathutil "path"
 	"strings"
 	"sync"
@@ -22,8 +22,8 @@ var currentConfig *config_file_t = nil
 var configCurrent_mutex sync.Mutex
 
 // Reads the specified config file
-func readConfig(config *config_file_t) os.Error {
-	var err os.Error
+func readConfig(config *config_file_t) error {
+	var err error
 
 	configCurrent_mutex.Lock()
 	{
@@ -43,14 +43,14 @@ func readConfig(config *config_file_t) os.Error {
 	configCurrent_mutex.Unlock()
 
 	if err != nil {
-		err = os.NewError(config.Path() + ": " + err.String())
+		err = errors.New(config.Path() + ": " + err.Error())
 	}
 
 	return err
 }
 
 // Loads and evaluates the specified Go script
-func loadAndRunScript(w *eval.World, path string) os.Error {
+func loadAndRunScript(w *eval.World, path string) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
@@ -62,8 +62,8 @@ func loadAndRunScript(w *eval.World, path string) os.Error {
 }
 
 // Runs the specified Go source code in the context of 'w'
-func runScript(w *eval.World, path, sourceCode string) os.Error {
-	var err os.Error
+func runScript(w *eval.World, path, sourceCode string) error {
+	var err error
 	var code eval.Code
 
 	fileSet := token.NewFileSet()
@@ -71,8 +71,8 @@ func runScript(w *eval.World, path, sourceCode string) os.Error {
 
 	code, err = w.Compile(fileSet, sourceCode)
 	if err != nil {
-		str := strings.Replace(err.String(), "input", path, 1)
-		return os.NewError(str)
+		str := strings.Replace(err.Error(), "input", path, 1)
+		return errors.New(str)
 	}
 
 	_, err = code.Run()
@@ -180,19 +180,18 @@ func defineFunctions(w *eval.World) {
 	}
 }
 
-
 // Signature: func Package(path string)
 func wrapper_Package(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	pkg := in[0].(eval.StringValue).Get(t)
 
 	if len(currentConfig.targetPackage_orEmpty) != 0 {
-		t.Abort(os.NewError("duplicate target package specification"))
+		t.Abort(errors.New("duplicate target package specification"))
 		return
 	}
 
 	pkg = strings.TrimSpace(pkg)
 	if len(pkg) == 0 {
-		t.Abort(os.NewError("the target package cannot be an empty string"))
+		t.Abort(errors.New("the target package cannot be an empty string"))
 		return
 	}
 
@@ -207,7 +206,7 @@ func wrapper_PackageFiles(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	_files := in[0].(eval.StringValue).Get(t)
 
 	if currentConfig.packageFiles_orNil != nil {
-		t.Abort(os.NewError("package files already defined"))
+		t.Abort(errors.New("package files already defined"))
 		return
 	}
 
@@ -215,7 +214,7 @@ func wrapper_PackageFiles(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	{
 		files = strings.Fields(_files)
 		if len(files) == 0 {
-			t.Abort(os.NewError("empty list of files"))
+			t.Abort(errors.New("empty list of files"))
 			return
 		}
 
@@ -228,20 +227,20 @@ func wrapper_PackageFiles(t *eval.Thread, in []eval.Value, out []eval.Value) {
 			}
 
 			if !strings.HasSuffix(file, ".go") {
-				t.Abort(os.NewError("the name of file \"" + file + "\" does not end with \".go\""))
+				t.Abort(errors.New("the name of file \"" + file + "\" does not end with \".go\""))
 				return
 			}
 
 			dir, _ := pathutil.Split(file)
 			if len(dir) > 0 {
-				t.Abort(os.NewError("package file \"" + file + "\" uses a relative path"))
+				t.Abort(errors.New("package file \"" + file + "\" uses a relative path"))
 				return
 			}
 
 			path := pathutil.Join(currentConfig.parent.path, file)
 
 			if !fileExists(path) {
-				t.Abort(os.NewError("file \"" + path + "\" does not exist"))
+				t.Abort(errors.New("file \"" + path + "\" does not exist"))
 				return
 			}
 
@@ -271,7 +270,7 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	// Check the name, make the name relative to the local root
 	{
-		var err os.Error
+		var err error
 		name, err = cleanAndCheckPath(t, name)
 		if err != nil {
 			t.Abort(err)
@@ -280,13 +279,13 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 		_, file := pathutil.Split(name)
 		if file == testExeName {
-			t.Abort(os.NewError("executables named \"" + name + "\" are used for tests"))
+			t.Abort(errors.New("executables named \"" + name + "\" are used for tests"))
 			return
 		}
 
 		name = pathutil.Join(currentConfig.parent.path, name)
 		if _, alreadyPresent := executable2sources[name]; alreadyPresent {
-			t.Abort(os.NewError("duplicate executable \"" + name + "\""))
+			t.Abort(errors.New("duplicate executable \"" + name + "\""))
 			return
 		}
 	}
@@ -295,7 +294,7 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	{
 		sources = strings.Fields(_sources)
 		if len(sources) == 0 {
-			t.Abort(os.NewError("empty list of sources"))
+			t.Abort(errors.New("empty list of sources"))
 			return
 		}
 
@@ -308,19 +307,19 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 			}
 
 			if !strings.HasSuffix(source, ".go") {
-				t.Abort(os.NewError("the name of file \"" + source + "\" does not end with \".go\""))
+				t.Abort(errors.New("the name of file \"" + source + "\" does not end with \".go\""))
 				return
 			}
 
 			source = pathutil.Join(currentConfig.parent.path, source)
 
 			if _, alreadyPresent := source2executable[source]; alreadyPresent {
-				t.Abort(os.NewError("cannot associate file \"" + source + "\" with more than one executable"))
+				t.Abort(errors.New("cannot associate file \"" + source + "\" with more than one executable"))
 				return
 			}
 
 			if !fileExists(source) {
-				t.Abort(os.NewError("executable \"" + name + "\" depends on non-existent file \"" + source + "\""))
+				t.Abort(errors.New("executable \"" + name + "\" depends on non-existent file \"" + source + "\""))
 				return
 			}
 
@@ -340,13 +339,13 @@ func wrapper_Executable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Checks the existence and contents of Go source code files
 // associated with all executables in 'executable2sources'
-func check_executable2sources(root *dir_t) os.Error {
+func check_executable2sources(root *dir_t) error {
 	for executable, sources := range executable2sources {
 		for _, source := range sources {
 			var object object_t = root.getObject_orNil(strings.Split(source, "/"))
 
 			if object == nil {
-				return os.NewError("executable \"" + executable + "\" depends on non-existent object \"" + source + "\"")
+				return errors.New("executable \"" + executable + "\" depends on non-existent object \"" + source + "\"")
 			}
 
 			if src, ok := object.(go_source_code_t); ok {
@@ -356,11 +355,11 @@ func check_executable2sources(root *dir_t) os.Error {
 				}
 
 				if contents.packageName != "main" {
-					return os.NewError("file \"" + source + "\" (associated with executable \"" + executable + "\") " +
+					return errors.New("file \"" + source + "\" (associated with executable \"" + executable + "\") " +
 						"does not belong to package \"main\"")
 				}
 			} else {
-				return os.NewError("executable \"" + executable + "\" depends on \"" + source + "\", " +
+				return errors.New("executable \"" + executable + "\" depends on \"" + source + "\", " +
 					"but \"" + source + "\" is not a Go source code file")
 			}
 		}
@@ -369,23 +368,21 @@ func check_executable2sources(root *dir_t) os.Error {
 	return nil
 }
 
-
-func cleanAndCheckPath(t *eval.Thread, path string) (string, os.Error) {
+func cleanAndCheckPath(t *eval.Thread, path string) (string, error) {
 	path = pathutil.Clean(path)
 
 	if len(path) == 0 {
-		return "", os.NewError("empty path")
+		return "", errors.New("empty path")
 	}
 	if pathutil.IsAbs(path) {
-		return "", os.NewError("path \"" + path + "\" is not a relative path")
+		return "", errors.New("path \"" + path + "\" is not a relative path")
 	}
 	if strings.HasPrefix(path, "..") {
-		return "", os.NewError("path \"" + path + "\" is referring the parental directory")
+		return "", errors.New("path \"" + path + "\" is referring the parental directory")
 	}
 
 	return path, nil
 }
-
 
 // Set of directories to ignore.
 // This is a set, the values of this hash-map have no meaning.
@@ -395,7 +392,7 @@ var ignoredDirs = make(map[string]byte)
 func wrapper_IgnoreDir(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	path := in[0].(eval.StringValue).Get(t)
 
-	var err os.Error
+	var err error
 	path, err = cleanAndCheckPath(t, path)
 	if err != nil {
 		t.Abort(err)
@@ -410,7 +407,6 @@ func wrapper_IgnoreDir(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	ignoredDirs[path] = 0
 }
 
-
 // Set of files for which gofmt is disabled.
 // This is a set, the values of this hash-map have no meaning.
 var disabledGoFmt = make(map[string]byte)
@@ -419,7 +415,7 @@ var disabledGoFmt = make(map[string]byte)
 func wrapper_DisableGoFmt(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	path := in[0].(eval.StringValue).Get(t)
 
-	var err os.Error
+	var err error
 	path, err = cleanAndCheckPath(t, path)
 	if err != nil {
 		t.Abort(err)
@@ -429,7 +425,7 @@ func wrapper_DisableGoFmt(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	path = pathutil.Join(currentConfig.parent.path, path)
 
 	if _, alreadyPresent := disabledGoFmt[path]; alreadyPresent {
-		t.Abort(os.NewError("gofmt already disabled: \"" + path + "\""))
+		t.Abort(errors.New("gofmt already disabled: \"" + path + "\""))
 		return
 	}
 
@@ -438,7 +434,6 @@ func wrapper_DisableGoFmt(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 	disabledGoFmt[path] = 0
 }
-
 
 const VERSION = 2
 
@@ -452,11 +447,10 @@ func wrapper_MinGoamVersion(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	if VERSION < minVersion {
 		msg := fmt.Sprintf("insufficient GOAM version: %d, minimum required version is %d", VERSION, minVersion)
-		t.Abort(os.NewError(msg))
+		t.Abort(errors.New(msg))
 		return
 	}
 }
-
 
 // Signature: func MinCompilerVersion(version uint)
 func wrapper_MinCompilerVersion(t *eval.Thread, in []eval.Value, out []eval.Value) {
@@ -467,7 +461,7 @@ func wrapper_MinCompilerVersion(t *eval.Thread, in []eval.Value, out []eval.Valu
 	}
 
 	if *flag_gcc {
-		t.Abort(os.NewError("function MinCompilerVersion is incompatible with gccgo"))
+		t.Abort(errors.New("function MinCompilerVersion is incompatible with gccgo"))
 		return
 	}
 
@@ -479,22 +473,21 @@ func wrapper_MinCompilerVersion(t *eval.Thread, in []eval.Value, out []eval.Valu
 
 	if uint64(version) < minVersion {
 		msg := fmt.Sprintf("insufficient Go compiler version: %d, minimum required version is %d", version, minVersion)
-		t.Abort(os.NewError(msg))
+		t.Abort(errors.New(msg))
 		return
 	}
 }
-
 
 // Signature: func InstallPackage()
 func wrapper_InstallPackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	pkg := currentConfig.targetPackage_orEmpty
 	if len(pkg) == 0 {
-		t.Abort(os.NewError("no target package has been defined"))
+		t.Abort(errors.New("no target package has been defined"))
 		return
 	}
 
 	if _, alreadyPresent := installationCommands_packagesByImport[pkg]; alreadyPresent {
-		t.Abort(os.NewError("duplicate installation of package \"" + pkg + "\""))
+		t.Abort(errors.New("duplicate installation of package \"" + pkg + "\""))
 		return
 	}
 
@@ -511,7 +504,7 @@ func wrapper_InstallPackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func wrapper_InstallExecutable(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	srcPath := in[0].(eval.StringValue).Get(t)
 
-	var err os.Error
+	var err error
 
 	// Check the 'srcPath', make it relative to the local root
 	{
@@ -523,13 +516,13 @@ func wrapper_InstallExecutable(t *eval.Thread, in []eval.Value, out []eval.Value
 
 		_, file := pathutil.Split(srcPath)
 		if file == testExeName {
-			t.Abort(os.NewError("cannot install: executables named \"" + srcPath + "\" are used for tests"))
+			t.Abort(errors.New("cannot install: executables named \"" + srcPath + "\" are used for tests"))
 			return
 		}
 
 		srcPath = pathutil.Join(currentConfig.parent.path, srcPath)
 		if _, alreadyPresent := installationCommands_bySrcPath[srcPath]; alreadyPresent {
-			t.Abort(os.NewError("duplicate installation of \"" + srcPath + "\""))
+			t.Abort(errors.New("duplicate installation of \"" + srcPath + "\""))
 			return
 		}
 	}
@@ -548,7 +541,7 @@ func wrapper_InstallDir(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	srcPath := in[0].(eval.StringValue).Get(t)
 	dstPath := in[1].(eval.StringValue).Get(t)
 
-	var err os.Error
+	var err error
 
 	// Check the 'srcPath', make it relative to the local root
 	{
@@ -560,7 +553,7 @@ func wrapper_InstallDir(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 		srcPath = pathutil.Join(currentConfig.parent.path, srcPath)
 		if _, alreadyPresent := installationCommands_bySrcPath[srcPath]; alreadyPresent {
-			t.Abort(os.NewError("duplicate installation of \"" + srcPath + "\""))
+			t.Abort(errors.New("duplicate installation of \"" + srcPath + "\""))
 			return
 		}
 	}
@@ -576,7 +569,6 @@ func wrapper_InstallDir(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	installationCommands = append(installationCommands, cmd)
 	installationCommands_bySrcPath[srcPath] = cmd
 }
-
 
 // Signature: func RemotePackage(importPaths, type, repository string, installCommand []string)
 func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
@@ -606,7 +598,7 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		}
 
 		if len(importPaths_array) == 0 {
-			t.Abort(os.NewError("repository \"" + repositoryPath + "\": empty list of import paths"))
+			t.Abort(errors.New("repository \"" + repositoryPath + "\": empty list of import paths"))
 			return
 		}
 
@@ -615,7 +607,7 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 			importPaths_set := make(map[string]byte)
 			for _, importPath := range importPaths_array {
 				if _, alreadyExists := importPaths_set[importPath]; alreadyExists {
-					t.Abort(os.NewError("repository \"" + repositoryPath + "\": duplicate import path \"" + importPath + "\""))
+					t.Abort(errors.New("repository \"" + repositoryPath + "\": duplicate import path \"" + importPath + "\""))
 					return
 				}
 
@@ -631,7 +623,7 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	case "bitbucket":
 		kind = BITBUCKET
 	default:
-		t.Abort(os.NewError("repository \"" + repositoryPath + "\": \"" + kindString + "\" is an invalid repository type"))
+		t.Abort(errors.New("repository \"" + repositoryPath + "\": \"" + kindString + "\" is an invalid repository type"))
 		return
 	}
 
@@ -657,7 +649,7 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		}
 
 		if len(installCommand) == 0 {
-			t.Abort(os.NewError("repository \"" + repositoryPath + "\": empty installation command"))
+			t.Abort(errors.New("repository \"" + repositoryPath + "\": empty installation command"))
 			return
 		}
 	}
@@ -671,17 +663,17 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	{
 		if remotePkg1, alreadyExists := remotePackages_byRepository[repositoryPath]; alreadyExists {
 			if remotePkg1.repository.Kind() != kind {
-				t.Abort(os.NewError("repository \"" + repositoryPath + "\" redefined with a different repository type"))
+				t.Abort(errors.New("repository \"" + repositoryPath + "\" redefined with a different repository type"))
 				return
 			}
 
 			if len(remotePkg1.installCmd) != len(installCommand) {
-				t.Abort(os.NewError("repository \"" + repositoryPath + "\" redefined with a different installation command"))
+				t.Abort(errors.New("repository \"" + repositoryPath + "\" redefined with a different installation command"))
 				return
 			}
 			for i := 0; i < len(installCommand); i++ {
 				if remotePkg1.installCmd[i] != installCommand[i] {
-					t.Abort(os.NewError("repository \"" + repositoryPath + "\" redefined with a different installation command"))
+					t.Abort(errors.New("repository \"" + repositoryPath + "\" redefined with a different installation command"))
 					return
 				}
 			}
@@ -710,7 +702,7 @@ func wrapper_RemotePackage(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	for _, importPath := range importPaths_array {
 		if remotePkg1, exists := remotePackages_byImport[importPath]; exists {
 			if remotePkg1 != remotePkg {
-				t.Abort(os.NewError("import path \"" + importPath + "\" maps to multiple distinct repositories"))
+				t.Abort(errors.New("import path \"" + importPath + "\" maps to multiple distinct repositories"))
 				return
 			}
 		} else {
