@@ -3,10 +3,10 @@ package main
 import (
 	"bytes"
 	"errors"
-	"exec"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"runtime"
 	"sort"
 	"strings"

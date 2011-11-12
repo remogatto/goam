@@ -4,7 +4,7 @@
 package main
 
 import (
-	"http"
+	"net/http"
 	"strings"
 )
 
