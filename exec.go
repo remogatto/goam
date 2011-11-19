@@ -62,7 +62,7 @@ func addSelf() {
 	// if the compiler is unable to find 'syscall.Getrusage'
 	var usage syscall.Rusage
 	errno := syscall.Getrusage(0, &usage)
-	if errno == 0 {
+	if errno == nil {
 		addResourceUsage("(self)", &usage)
 	}
 
