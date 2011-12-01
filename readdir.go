@@ -14,7 +14,7 @@ func readDir() (*dir_t, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !fileInfo.IsDirectory() {
+	if !fileInfo.IsDir() {
 		return nil, errors.New("not a directory: " + name)
 	}
 
@@ -53,12 +53,12 @@ func readDir_internal(dir *dir_t) error {
 	numSubdirs := 0
 	numTemporarySubdirs := 0
 	for i := 0; i < listSize; i++ {
-		var entry *os.FileInfo = &list[i]
+		var entry os.FileInfo = list[i]
 
 		// Ignore all entries starting with '.'
-		if strings.HasPrefix(entry.Name, ".") {
+		if strings.HasPrefix(entry.Name(), ".") {
 			if *flag_debug {
-				println("ignore:", pathutil.Join(dir.path, entry.Name))
+				println("ignore:", pathutil.Join(dir.path, entry.Name()))
 			}
 			continue
 		}
@@ -67,11 +67,11 @@ func readDir_internal(dir *dir_t) error {
 		var err error
 
 		switch {
-		case entry.IsRegular():
-			object, err = identifyFile(pathutil.Join(dir.path, entry.Name), entry, dir)
+		case entry.IsDir():
+			object, err = new_dir(new_entry(pathutil.Join(dir.path, entry.Name()), entry), dir), nil
 
-		case entry.IsDirectory():
-			object, err = new_dir(new_entry(pathutil.Join(dir.path, entry.Name), entry), dir), nil
+		default:
+			object, err = identifyFile(pathutil.Join(dir.path, entry.Name()), entry, dir)
 		}
 
 		if err != nil {
@@ -130,52 +130,52 @@ func readDir_internal(dir *dir_t) error {
 	return nil
 }
 
-func identifyFile(path string, fi *os.FileInfo, parent *dir_t) (object_t, error) {
+func identifyFile(path string, fi os.FileInfo, parent *dir_t) (object_t, error) {
 	var entry entry_t = new_entry(path, fi)
 
-	if strings.HasSuffix(fi.Name, "_test.go") {
+	if strings.HasSuffix(fi.Name(), "_test.go") {
 		if *flag_debug {
 			println("go test:", path)
 		}
 		return new_go_test(entry, parent), nil
 	}
 
-	if strings.HasSuffix(fi.Name, ".go") {
+	if strings.HasSuffix(fi.Name(), ".go") {
 		if *flag_debug {
 			println("go source code:", path)
 		}
 		return new_go_file(entry, parent), nil
 	}
 
-	if (len(fi.Name) == len(configFileName)) && (strings.ToLower(fi.Name) == strings.ToLower(configFileName)) {
+	if (len(fi.Name()) == len(configFileName)) && (strings.ToLower(fi.Name()) == strings.ToLower(configFileName)) {
 		if *flag_debug {
 			println("config file:", path)
 		}
 		return new_config_file(entry, parent)
 	}
 
-	if fi.Name == "Makefile" {
+	if fi.Name() == "Makefile" {
 		if *flag_debug {
 			println("makefile:", path)
 		}
 		return new_makefile(entry, parent)
 	}
 
-	if isCompilationUnit(fi.Name) {
+	if isCompilationUnit(fi.Name()) {
 		if *flag_debug {
 			println("compilation unit:", path)
 		}
 		return new_compilation_unit(entry, parent), nil
 	}
 
-	if strings.HasSuffix(fi.Name, ".a") {
+	if strings.HasSuffix(fi.Name(), ".a") {
 		if *flag_debug {
 			println("library:", path)
 		}
 		return new_library(entry, parent), nil
 	}
 
-	if (fi.Permission() & 0100) != 0 {
+	if (fi.Mode().Perm() & 0100) != 0 {
 		if *flag_debug {
 			println("executable:", path)
 		}

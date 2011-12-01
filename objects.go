@@ -93,12 +93,12 @@ type executable_t struct {
 // entry_t
 // =======
 
-func new_entry(path string, fileInfo *os.FileInfo) entry_t {
+func new_entry(path string, fileInfo os.FileInfo) entry_t {
 	return entry_t{
-		name:   fileInfo.Name,
+		name:   fileInfo.Name(),
 		path:   path,
 		exists: true,
-		mtime:  fileInfo.Mtime_ns,
+		mtime:  fileInfo.ModTime().UnixNano(),
 	}
 }
 
@@ -147,7 +147,7 @@ func (e *entry_t) UpdateFileInfo() {
 	fileInfo, err := os.Stat(e.path)
 	if err == nil {
 		e.exists = true
-		e.mtime = fileInfo.Mtime_ns
+		e.mtime = fileInfo.ModTime().UnixNano()
 	} else {
 		e.exists = false
 		e.mtime = -1

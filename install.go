@@ -172,11 +172,11 @@ func (i *install_dir_t) Uninstall(root *dir_t) error {
 
 type uninstaller_t struct{}
 
-func (uninstaller_t) EnterDir(masterPath, slavePath string, masterDir, slave_orNil *os.FileInfo) error {
+func (uninstaller_t) EnterDir(masterPath, slavePath string, masterDir, slave_orNil os.FileInfo) error {
 	return nil
 }
 
-func (uninstaller_t) VisitFile(masterPath, slavePath string, master, slave_orNil *os.FileInfo) error {
+func (uninstaller_t) VisitFile(masterPath, slavePath string, master, slave_orNil os.FileInfo) error {
 	if slave_orNil != nil {
 		if *flag_debug {
 			println("uninstall:", slavePath)
@@ -191,9 +191,9 @@ func (uninstaller_t) VisitFile(masterPath, slavePath string, master, slave_orNil
 	return nil
 }
 
-func (uninstaller_t) LeaveDir(masterPath, slavePath string, masterDir, slave_orNil *os.FileInfo) error {
+func (uninstaller_t) LeaveDir(masterPath, slavePath string, masterDir, slave_orNil os.FileInfo) error {
 	if slave_orNil != nil {
-		if slave_orNil.IsDirectory() {
+		if slave_orNil.IsDir() {
 			isEmpty, err := isEmptyDir(slavePath)
 			if err != nil {
 				return err
@@ -217,9 +217,9 @@ func (uninstaller_t) LeaveDir(masterPath, slavePath string, masterDir, slave_orN
 }
 
 type DualVisitor interface {
-	EnterDir(masterPath, slavePath string, masterDir, slave_orNil *os.FileInfo) error
-	VisitFile(masterPath, slavePath string, master, slave_orNil *os.FileInfo) error
-	LeaveDir(masterPath, slavePath string, masterDir, slave_orNil *os.FileInfo) error
+	EnterDir(masterPath, slavePath string, masterDir, slave_orNil os.FileInfo) error
+	VisitFile(masterPath, slavePath string, master, slave_orNil os.FileInfo) error
+	LeaveDir(masterPath, slavePath string, masterDir, slave_orNil os.FileInfo) error
 }
 
 func dualWalk(master, slave string, v DualVisitor) error {
@@ -240,11 +240,11 @@ func dualWalk(master, slave string, v DualVisitor) error {
 	return dualWalk_internal(master, slave, master_fileInfo, slave_fileInfo_orNil, v)
 }
 
-func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.FileInfo, v DualVisitor) error {
+func dualWalk_internal(masterPath, slavePath string, master, slave_orNil os.FileInfo, v DualVisitor) error {
 	var err error
 
 	switch {
-	case master.IsDirectory():
+	case master.IsDir():
 		err = v.EnterDir(masterPath, slavePath, master, slave_orNil)
 		if err != nil {
 			return err
@@ -275,13 +275,13 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.Fil
 				}
 			}
 
-			if (slave_orNil != nil) && slave_orNil.IsDirectory() {
+			if (slave_orNil != nil) && slave_orNil.IsDir() {
 				// The slave exists and it is a directory.
 				// Each entry in the master directory implicates an entry in the slave directory.
 				for i, _ := range master_entries {
-					master_entry := &master_entries[i]
-					master_entryPath := pathutil.Join(masterPath, master_entry.Name)
-					slave_entryPath := pathutil.Join(slavePath, master_entry.Name)
+					master_entry := master_entries[i]
+					master_entryPath := pathutil.Join(masterPath, master_entry.Name())
+					slave_entryPath := pathutil.Join(slavePath, master_entry.Name())
 
 					slave_entry_orNil, err := os.Lstat(slave_entryPath)
 					if err != nil {
@@ -299,9 +299,9 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.Fil
 				// The slave does not exist, or it exists but it is not a directory.
 				// It is impossible to descend into the non-existent slave directory.
 				for i, _ := range master_entries {
-					master_entry := &master_entries[i]
-					master_entryPath := pathutil.Join(masterPath, master_entry.Name)
-					slave_entryPath := pathutil.Join(slavePath, master_entry.Name)
+					master_entry := master_entries[i]
+					master_entryPath := pathutil.Join(masterPath, master_entry.Name())
+					slave_entryPath := pathutil.Join(slavePath, master_entry.Name())
 					err = dualWalk_internal(master_entryPath, slave_entryPath, master_entry, nil, v)
 					if err != nil {
 						return err
@@ -315,7 +315,7 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.Fil
 			return err
 		}
 
-	case master.IsRegular():
+	default:
 		err = v.VisitFile(masterPath, slavePath, master, slave_orNil)
 		if err != nil {
 			return err
@@ -332,7 +332,7 @@ func uninstallEmptyDirs(root, relativePath string) error {
 
 	fileInfo, err := os.Stat(path)
 	if err == nil {
-		if fileInfo.IsDirectory() {
+		if fileInfo.IsDir() {
 			isEmpty, err := isEmptyDir(path)
 			if err != nil {
 				return err
