@@ -21,7 +21,7 @@ Alternative build tools can be found at
 * Support for multiple executables in one directory
 * Libraries can be private to a project
 * Installation and uninstallation
-* Download and installation of dependencies (only supports GitHub right now)
+* Download and installation of dependencies (GitHub and BitBucket)
 
 ## Integration with tools and alternative Go compilers
 * Makefile support
