@@ -81,7 +81,7 @@ func printTimings(out *os.File) {
 	maxNameLength := 0
 	{
 		i := 0
-		for name, _ := range taskStats {
+		for name := range taskStats {
 			sortedNames[i] = name
 			if len(name) > maxNameLength {
 				maxNameLength = len(name)

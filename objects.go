@@ -363,7 +363,7 @@ func (u *compilation_unit_t) Make() error {
 			args = append(args, "-o")
 			args = append(args, u.path)
 			if libIncludePaths != nil {
-				for incPath, _ := range libIncludePaths {
+				for incPath := range libIncludePaths {
 					args = append(args, "-I", incPath.path)
 				}
 			}
@@ -701,7 +701,7 @@ func (e *executable_t) collectLibs() ([]*dir_t, error) {
 	for len(todo) > 0 {
 		var todo2 = make(map[string]byte)
 
-		for importPath, _ := range todo {
+		for importPath := range todo {
 			test := (importPath == e.testImportPath_orEmpty)
 			pkg_orNil, err := resolvePackage(importPath, test)
 			if err != nil {

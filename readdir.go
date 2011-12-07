@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
-	pathutil "path"
 	"os"
+	pathutil "path"
 	"strings"
 )
 

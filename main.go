@@ -47,7 +47,7 @@ func boot(updateTests bool) (*dir_t, error) {
 		// Clean 'newObjects'
 		newObjects = make(map[object_t]byte)
 
-		for object, _ := range objects {
+		for object := range objects {
 			// Maybe infer some more objects.
 			// All created objects are added to 'newObjects'.
 			err = object.InferObjects(updateTests)

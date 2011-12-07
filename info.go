@@ -40,7 +40,7 @@ func (info *info_t) Print(w io.Writer) {
 		libs_byPath := make(map[string]*library_t)
 		paths := make([]string, len(info.libs))
 		i := 0
-		for lib, _ := range info.libs {
+		for lib := range info.libs {
 			libs_byPath[lib.path] = lib
 			paths[i] = lib.path
 			i++
@@ -127,7 +127,7 @@ func printExecutables(w io.Writer, tag string, allowVerbose bool, executables ma
 		exes_byPath := make(map[string]*executable_t)
 		paths := make([]string, len(executables))
 		i := 0
-		for exe, _ := range executables {
+		for exe := range executables {
 			exes_byPath[exe.path] = exe
 			paths[i] = exe.path
 			i++

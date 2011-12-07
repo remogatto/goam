@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	eval "bitbucket.org/binet/go-eval/pkg/eval"
+	"bytes"
 	"errors"
 	"fmt"
 	"go/token"

@@ -278,7 +278,7 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil os.File
 			if (slave_orNil != nil) && slave_orNil.IsDir() {
 				// The slave exists and it is a directory.
 				// Each entry in the master directory implicates an entry in the slave directory.
-				for i, _ := range master_entries {
+				for i := range master_entries {
 					master_entry := master_entries[i]
 					master_entryPath := pathutil.Join(masterPath, master_entry.Name())
 					slave_entryPath := pathutil.Join(slavePath, master_entry.Name())
@@ -298,7 +298,7 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil os.File
 			} else {
 				// The slave does not exist, or it exists but it is not a directory.
 				// It is impossible to descend into the non-existent slave directory.
-				for i, _ := range master_entries {
+				for i := range master_entries {
 					master_entry := master_entries[i]
 					master_entryPath := pathutil.Join(masterPath, master_entry.Name())
 					slave_entryPath := pathutil.Join(slavePath, master_entry.Name())
