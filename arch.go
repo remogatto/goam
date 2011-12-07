@@ -104,16 +104,16 @@ func getGoCompilerVersion() (uint, error) {
 				" (possible cause: you didn't have the Mercurial versioning system installed when you were compiling the Go distribution)")
 		}
 
-		version, err := strconv.Atoui(strings.TrimRight(stdout_split[2], "+"))
+		version, err := strconv.ParseUint(strings.TrimRight(stdout_split[2], "+"), 10, 0)
 		if (err != nil) && (len(stdout_split) >= 4) {
-			version, err = strconv.Atoui(strings.TrimRight(stdout_split[3], "+"))
+			version, err = strconv.ParseUint(strings.TrimRight(stdout_split[3], "+"), 10, 0)
 		}
 		if err != nil {
 			return 0, errors.New("failed to extract [Go compiler version] from string \"" + stdout + "\"")
 		}
 
 		goCompilerVersion = new(uint)
-		*goCompilerVersion = version
+		*goCompilerVersion = uint(version)
 	}
 
 	return *goCompilerVersion, nil
