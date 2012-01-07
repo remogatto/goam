@@ -44,6 +44,7 @@ type go_testMain_t struct {
 	refresh    bool
 	tests      []string
 	benchmarks []string
+	examples   []string
 }
 
 // The content of a Go file
@@ -52,6 +53,7 @@ type go_file_contents_t struct {
 	importedPackages []string
 	tests            []string
 	benchmarks       []string
+	examples         []string
 }
 
 // =========
@@ -205,6 +207,7 @@ func inferObjects(f go_source_code_t, test bool) error {
 
 				testMain.addTests(contents.tests)
 				testMain.addBenchmarks(contents.benchmarks)
+				testMain.addExamples(contents.benchmarks)
 			}
 		} else {
 			// Expect an executable
@@ -421,6 +424,10 @@ func (t *go_testMain_t) addBenchmarks(names []string) {
 	t.benchmarks = append(t.benchmarks, names...)
 }
 
+func (t *go_testMain_t) addExamples(names []string) {
+	t.examples = append(t.examples, names...)
+}
+
 func (t *go_testMain_t) packageName() string {
 	_, packageName := pathutil.Split(t.importPath)
 	return packageName
@@ -449,7 +456,7 @@ func (t *go_testMain_t) refreshIfNeeded() error {
 			buf = bytes.NewBuffer(make([]byte, 0, 300))
 			buf.WriteString("package main\n")
 			buf.WriteString("\n")
-			if (len(t.tests) > 0) || (len(t.benchmarks) > 0) {
+			if (len(t.tests) > 0) || (len(t.benchmarks) > 0) || (len(t.examples) > 0) {
 				buf.WriteString("import \"" + t.importPath + "\"\n")
 			}
 			buf.WriteString("import \"testing\"\n")
@@ -474,10 +481,19 @@ func (t *go_testMain_t) refreshIfNeeded() error {
 			}
 			buf.WriteString("}\n")
 
+			// Examples
+			buf.WriteString("var examples = []testing.InternalExample{\n")
+			sort.Strings(t.examples)
+			for _, example := range t.examples {
+				qualifiedName := packageName + "." + example
+				buf.WriteString("\t{\"" + qualifiedName + "\", " + qualifiedName + "},\n")
+			}
+			buf.WriteString("}\n")
+
 			// Main func
 			buf.WriteString("\n")
 			buf.WriteString("func main() {\n")
-			buf.WriteString("\ttesting.Main(_regexp.MatchString, tests, benchmarks)\n")
+			buf.WriteString("\ttesting.Main(_regexp.MatchString, tests, benchmarks, examples)\n")
 			buf.WriteString("}\n")
 		}
 
@@ -624,6 +640,7 @@ type ast_visitor_t struct {
 
 	tests      []string
 	benchmarks []string
+	examples   []string
 }
 
 func (v *ast_visitor_t) Visit(node ast.Node) ast.Visitor {
@@ -637,6 +654,8 @@ func (v *ast_visitor_t) Visit(node ast.Node) ast.Visitor {
 				v.tests = append(v.tests, name)
 			} else if strings.HasPrefix(name, "Benchmark") {
 				v.benchmarks = append(v.benchmarks, name)
+			} else if strings.HasPrefix(name, "Example") {
+				v.examples = append(v.examples, name)
 			}
 		}
 		return nil
@@ -689,6 +708,7 @@ func parse_go_file_contents(filePath string, test bool) (*go_file_contents_t, er
 		importedPackages: importedPackages,
 		tests:            v.tests,
 		benchmarks:       v.benchmarks,
+		examples:         v.examples,
 	}
 
 	if *flag_debug {
@@ -700,6 +720,7 @@ func parse_go_file_contents(filePath string, test bool) (*go_file_contents_t, er
 			fmt.Printf("    imports:    %v\n", contents.importedPackages)
 			fmt.Printf("    tests:      %s\n", contents.tests)
 			fmt.Printf("    benchmarks: %s\n", contents.benchmarks)
+			fmt.Printf("    examples: %s\n", contents.examples)
 		}
 	}
 
