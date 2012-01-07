@@ -1,10 +1,5 @@
 Usage: goam [OPTIONS] uninstall
 
-Options:
-  -v=false: Verbose
-  -d=false: Print debugging messages
-  -t=false: Print timings pertaining executed commands
-
 Description:
   Reverts the effects of "goam install".
 

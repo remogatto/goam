@@ -4,7 +4,7 @@ import (
 	"os"
 )
 
-func mkdirAll(path string, perm uint32) os.Error {
+func mkdirAll(path string, perm uint32) error {
 	if *flag_debug {
 		println("mkdir-all:", path)
 	}

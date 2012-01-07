@@ -1,7 +1,7 @@
 package main
 
 import (
-	"container/vector"
+	"errors"
 	"io"
 	"os"
 	pathutil "path"
@@ -16,7 +16,6 @@ type dir_t struct {
 	numTestFiles   uint
 	objects        []object_t
 }
-
 
 func new_dir(entry entry_t, parent_orNil *dir_t) *dir_t {
 	d := &dir_t{
@@ -96,7 +95,7 @@ func (d *dir_t) getOrCreateSubDirs(names []string) *dir_t {
 	return d
 }
 
-func (d *dir_t) mkdir_ifDoesNotExist() os.Error {
+func (d *dir_t) mkdir_ifDoesNotExist() error {
 	if d.parent_orNil != nil {
 		err := d.parent_orNil.mkdir_ifDoesNotExist()
 		if err != nil {
@@ -125,7 +124,7 @@ func (d *dir_t) add(object object_t) {
 	d.objects = append(d.objects, object)
 }
 
-func (d *dir_t) getOrCreate_goTestMain(fileName, importPath string, testDir *dir_t) (*go_testMain_t, os.Error) {
+func (d *dir_t) getOrCreate_goTestMain(fileName, importPath string, testDir *dir_t) (*go_testMain_t, error) {
 	var t *go_testMain_t
 
 	path := pathutil.Join(d.path, fileName)
@@ -145,7 +144,7 @@ func (d *dir_t) getOrCreate_goTestMain(fileName, importPath string, testDir *dir
 				t = new_go_testMain(goFile.entry_t, /*parent*/ d, importPath)
 				d.add(t)
 			} else {
-				return nil, os.NewError("file \"" + _t.Path() + "\" has an invalid type")
+				return nil, errors.New("file \"" + _t.Path() + "\" has an invalid type")
 			}
 		}
 	}
@@ -158,7 +157,7 @@ func (d *dir_t) getOrCreate_goTestMain(fileName, importPath string, testDir *dir
 	return t, nil
 }
 
-func (d *dir_t) getOrCreate_compilationUnit(name string) (*compilation_unit_t, os.Error) {
+func (d *dir_t) getOrCreate_compilationUnit(name string) (*compilation_unit_t, error) {
 	var compilationUnit *compilation_unit_t
 
 	var _compilationUnit object_t = d.getObject_orNil([]string{name})
@@ -171,14 +170,14 @@ func (d *dir_t) getOrCreate_compilationUnit(name string) (*compilation_unit_t, o
 		var isCompilationUnit bool
 		compilationUnit, isCompilationUnit = _compilationUnit.(*compilation_unit_t)
 		if !isCompilationUnit {
-			return nil, os.NewError("file \"" + _compilationUnit.Path() + "\" was expected to be a " + o_ext + " file")
+			return nil, errors.New("file \"" + _compilationUnit.Path() + "\" was expected to be a " + o_ext + " file")
 		}
 	}
 
 	return compilationUnit, nil
 }
 
-func (d *dir_t) getOrCreate_library(name string) (*library_t, os.Error) {
+func (d *dir_t) getOrCreate_library(name string) (*library_t, error) {
 	var lib *library_t
 
 	var _lib object_t = d.getObject_orNil([]string{name})
@@ -191,14 +190,14 @@ func (d *dir_t) getOrCreate_library(name string) (*library_t, os.Error) {
 		var isLib bool
 		lib, isLib = _lib.(*library_t)
 		if !isLib {
-			return nil, os.NewError("file \"" + _lib.Path() + "\" was expected to be a library")
+			return nil, errors.New("file \"" + _lib.Path() + "\" was expected to be a library")
 		}
 	}
 
 	return lib, nil
 }
 
-func (d *dir_t) getOrCreate_executable(name string) (*executable_t, os.Error) {
+func (d *dir_t) getOrCreate_executable(name string) (*executable_t, error) {
 	var exe *executable_t
 
 	var _exe object_t = d.getObject_orNil([]string{name})
@@ -211,7 +210,7 @@ func (d *dir_t) getOrCreate_executable(name string) (*executable_t, os.Error) {
 		var isExe bool
 		exe, isExe = _exe.(*executable_t)
 		if !isExe {
-			return nil, os.NewError("file \"" + _exe.Path() + "\" was expected to be an executable")
+			return nil, errors.New("file \"" + _exe.Path() + "\" was expected to be an executable")
 		}
 	}
 
@@ -221,7 +220,7 @@ func (d *dir_t) getOrCreate_executable(name string) (*executable_t, os.Error) {
 func (d *dir_t) removeObject(o object_t) {
 	// Optional: remove from 'newObjects'
 	if _, contains := newObjects[o]; contains {
-		newObjects[o] = 0, false
+		delete(newObjects, o)
 	}
 
 	// Remove from 'd.objects'
@@ -236,7 +235,6 @@ func (d *dir_t) removeObject(o object_t) {
 	panic("no such object")
 }
 
-
 func (d *dir_t) UpdateFileSystemModel() {
 	d.UpdateFileInfo()
 	for _, object := range d.objects {
@@ -244,7 +242,7 @@ func (d *dir_t) UpdateFileSystemModel() {
 	}
 }
 
-func (d *dir_t) InferObjects(updateTests bool) os.Error {
+func (d *dir_t) InferObjects(updateTests bool) error {
 	return nil
 }
 
@@ -276,8 +274,8 @@ func (d *dir_t) Info(info *info_t) {
 	}
 }
 
-func (d *dir_t) Make() os.Error {
-	var err os.Error
+func (d *dir_t) Make() error {
+	var err error
 
 	if d.name == "_test" {
 		return nil
@@ -308,8 +306,8 @@ func (d *dir_t) Make() os.Error {
 	return nil
 }
 
-func (d *dir_t) MakeTests() os.Error {
-	var err os.Error
+func (d *dir_t) MakeTests() error {
+	var err error
 
 	err = d.mkdir_ifDoesNotExist()
 	if err != nil {
@@ -338,7 +336,7 @@ func (d *dir_t) MakeTests() os.Error {
 	return nil
 }
 
-func (d *dir_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
+func (d *dir_t) RunTests(testPattern, benchPattern string, errors *[]error) {
 	haveMakefile := (d.makefile_orNil != nil)
 	if haveMakefile {
 		if d.numTestFiles > 0 {
@@ -353,8 +351,8 @@ func (d *dir_t) RunTests(testPattern, benchPattern string, errors *[]os.Error) {
 	}
 }
 
-func (d *dir_t) Clean() os.Error {
-	var err os.Error
+func (d *dir_t) Clean() error {
+	var err error
 
 	if d.exists {
 		if d.makefile_orNil != nil {
@@ -395,7 +393,7 @@ func (d *dir_t) Clean() os.Error {
 	return nil
 }
 
-func (d *dir_t) GoFmt(files *vector.StringVector) os.Error {
+func (d *dir_t) GoFmt(files *[]string) error {
 	for _, object := range d.objects {
 		err := object.GoFmt(files)
 		if err != nil {

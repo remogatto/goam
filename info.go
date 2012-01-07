@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/vector"
 	"fmt"
 	"io"
 	"sort"
@@ -41,13 +40,13 @@ func (info *info_t) Print(w io.Writer) {
 		libs_byPath := make(map[string]*library_t)
 		paths := make([]string, len(info.libs))
 		i := 0
-		for lib, _ := range info.libs {
+		for lib := range info.libs {
 			libs_byPath[lib.path] = lib
 			paths[i] = lib.path
 			i++
 		}
 
-		sort.SortStrings(paths)
+		sort.Strings(paths)
 
 		for _, path := range paths {
 			lib := libs_byPath[path]
@@ -60,18 +59,18 @@ func (info *info_t) Print(w io.Writer) {
 			haveEmptyLine = false
 
 			if *flag_verbose {
-				var sources vector.StringVector
+				var sources []string
 
 				var unit *compilation_unit_t
 				for _, unit = range lib.sources {
 					for _, src := range unit.sources {
-						sources.Push(src.Path())
+						sources = append(sources, src.Path())
 					}
 				}
 
 				if lib.makefile_orNil != nil {
 					for _, src := range lib.makefile_orNil.sources {
-						sources.Push(src.Path())
+						sources = append(sources, src.Path())
 					}
 				}
 
@@ -112,7 +111,7 @@ func (info *info_t) Print(w io.Writer) {
 }
 
 func sortAndPrintNames(w io.Writer, prefix string, names []string) {
-	sort.SortStrings(names)
+	sort.Strings(names)
 	for _, name := range names {
 		fmt.Fprintf(w, "%s%s\n", prefix, name)
 	}
@@ -128,13 +127,13 @@ func printExecutables(w io.Writer, tag string, allowVerbose bool, executables ma
 		exes_byPath := make(map[string]*executable_t)
 		paths := make([]string, len(executables))
 		i := 0
-		for exe, _ := range executables {
+		for exe := range executables {
 			exes_byPath[exe.path] = exe
 			paths[i] = exe.path
 			i++
 		}
 
-		sort.SortStrings(paths)
+		sort.Strings(paths)
 
 		for _, path := range paths {
 			exe := exes_byPath[path]
@@ -147,18 +146,18 @@ func printExecutables(w io.Writer, tag string, allowVerbose bool, executables ma
 			*haveEmptyLine = false
 
 			if *flag_verbose && allowVerbose {
-				var sources vector.StringVector
+				var sources []string
 
 				var unit *compilation_unit_t
 				for _, unit = range exe.sources {
 					for _, src := range unit.sources {
-						sources.Push(src.Path())
+						sources = append(sources, src.Path())
 					}
 				}
 
 				if exe.makefile_orNil != nil {
 					for _, src := range exe.makefile_orNil.sources {
-						sources.Push(src.Path())
+						sources = append(sources, src.Path())
 					}
 				}
 

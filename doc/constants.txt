@@ -1,0 +1,35 @@
+This file contains descriptions of defined constants that can be used
+in a GOAM configuration file.
+
+Values of some of these constants can be changed via command-line flags.
+The change can be used to determine the behavior of GOAM.conf files
+on a different operating system, on a different CPU architecture, etc.
+
+
+const GOOS string = runtime.GOOS
+
+    The name of the operating system. The default value is equivalent
+    to 'runtime.GOOS' as defined by the Go runtime.
+
+    The "-conf-os" flag can be used to freely change the value of this
+    constant. Note that this only affects the code within GOAM.conf files,
+    it does NOT actually change the operating system nor the compilers used.
+
+
+const GOARCH string = runtime.GOARCH
+
+    The name of the CPU architecture. The default value is equivalent
+    to 'runtime.GOARCH' as defined by the Go runtime.
+
+    The "-conf-arch" flag can be used to freely change the value of this
+    constant. Note that this only affects the code within GOAM.conf files,
+    it does NOT actually change the CPU architecture nor the compilers used.
+
+
+const GO_COMPILER string
+
+    The name of the Go compiler used to compile Go files.
+    The value is one of: 5g 6g 8g gccgo.
+
+    The value depends on the actual CPU architecture
+    and on the "-gcc" command-line flag.

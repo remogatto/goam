@@ -17,12 +17,30 @@ is illegal.
 
 func Package(path string)
 
-    Defines a package built from all *.go files in the current directory.
+    Defines a package built from all *.go files in the current directory,
+    or built from the Go files specified by the 'PackageFiles' function.
+
     The 'path' specifies the import path of the package. For example,
     if the path is "compress/zip", the import statement in a Go file which
     wants to use it is "compress/zip", and the library's name is "zip.a".
 
     There can be at most one Package definition per directory.
+
+
+func PackageFiles(files string)
+
+    Can be used to define the Go files belonging to the package defined by
+    the 'Package' function. The parameter 'files' is a non-empty
+    space-separated list of Go files from the current directory.
+
+    If there is no definition of package files, but there is a definition of
+    the package (via function 'Package'), the package will use all Go files in
+    the current directory. If there is no need to select a subset of Go files
+    present in the current directory, then there is no need to use
+    PackageFiles in the configuration file.
+
+    There can be at most one PackageFiles definition per directory.
+    It is an error to define PackageFiles without defining the Package.
 
 
 func Executable(name, sources string)
@@ -31,8 +49,8 @@ func Executable(name, sources string)
     The parameter 'sources' is a non-empty space-separated list of Go files.
     Each Go file is specified by its relative path in respect to the current
     directory. References though the parental directory (e.g: "../file.go")
-    are forbidden. It is perfectly legal to refer files in sub-directories
-    of the current directory (e.g: "subdir/file.go").
+    are forbidden. It is legal to refer files in sub-directories of the
+    current directory (e.g: "subdir/file.go").
 
     The list of sources specifies the Go files from which to build
     the executable.
@@ -44,7 +62,7 @@ func Executable(name, sources string)
 
 func InstallPackage()
 
-    Informs GOAM to install the package previously declared by calling function
+    Informs GOAM to install the package previously defined by calling function
     'Package'. The function 'Package' has to be called before 'InstallPackage'.
     The package will be installed into "${GOROOT}/pkg/${GOOS}_${GOARCH}".
 
@@ -149,4 +167,6 @@ func MinCompilerVersion(version uint)
 
         $ 8g -V
         8g version 6870 release release.2010-12-08
+
+    This function is does not work in gccgo mode. 
 

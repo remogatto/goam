@@ -2,10 +2,11 @@ package main
 
 import (
 	"bufio"
-	"container/vector"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 )
 
 func usage() {
@@ -27,14 +28,14 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func exitIfError(err os.Error) {
+func exitIfError(err error) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
 
-func boot(updateTests bool) (*dir_t, os.Error) {
+func boot(updateTests bool) (*dir_t, error) {
 	rootObject, err := readDir()
 	if err != nil {
 		return nil, err
@@ -46,7 +47,7 @@ func boot(updateTests bool) (*dir_t, os.Error) {
 		// Clean 'newObjects'
 		newObjects = make(map[object_t]byte)
 
-		for object, _ := range objects {
+		for object := range objects {
 			// Maybe infer some more objects.
 			// All created objects are added to 'newObjects'.
 			err = object.InferObjects(updateTests)
@@ -75,7 +76,7 @@ func boot(updateTests bool) (*dir_t, os.Error) {
 	return rootObject, nil
 }
 
-func info([]string) os.Error {
+func info([]string) error {
 	rootObject, err := boot( /*updateTests*/ false)
 	if err != nil {
 		return err
@@ -90,7 +91,7 @@ func info([]string) os.Error {
 	return nil
 }
 
-func _make([]string) os.Error {
+func _make([]string) error {
 	rootObject, err := boot( /*updateTests*/ false)
 	if err != nil {
 		return err
@@ -109,7 +110,7 @@ func _make([]string) os.Error {
 	return nil
 }
 
-func makeTests([]string) os.Error {
+func makeTests([]string) error {
 	rootObject, err := boot( /*updateTests*/ true)
 	if err != nil {
 		return err
@@ -128,7 +129,7 @@ func makeTests([]string) os.Error {
 	return nil
 }
 
-func runTestsAndBenchmarks(testPattern, benchPattern string) os.Error {
+func runTestsAndBenchmarks(testPattern, benchPattern string) error {
 	rootObject, err := boot( /*updateTests*/ true)
 	if err != nil {
 		return err
@@ -144,19 +145,19 @@ func runTestsAndBenchmarks(testPattern, benchPattern string) os.Error {
 		return err
 	}
 
-	var errors []os.Error
-	rootObject.RunTests(testPattern, benchPattern, &errors)
-	if len(errors) > 0 {
-		for _, err = range errors {
+	var errorList []error
+	rootObject.RunTests(testPattern, benchPattern, &errorList)
+	if len(errorList) > 0 {
+		for _, err = range errorList {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 		}
-		return os.NewError("some tests have failed")
+		return errors.New("some tests have failed")
 	}
 
 	return nil
 }
 
-func runTests(args []string) os.Error {
+func runTests(args []string) error {
 	var pattern string
 	switch len(args) {
 	case 0:
@@ -170,7 +171,7 @@ func runTests(args []string) os.Error {
 	return runTestsAndBenchmarks(pattern, "")
 }
 
-func runBenchmarks(args []string) os.Error {
+func runBenchmarks(args []string) error {
 	var pattern string
 	switch len(args) {
 	case 0:
@@ -184,7 +185,7 @@ func runBenchmarks(args []string) os.Error {
 	return runTestsAndBenchmarks("\"<no-tests>\"", pattern)
 }
 
-func clean([]string) os.Error {
+func clean([]string) error {
 	rootObject, err := boot( /*updateTests*/ false)
 	if err != nil {
 		return err
@@ -198,14 +199,17 @@ func clean([]string) os.Error {
 	return nil
 }
 
-func install([]string) os.Error {
+func install([]string) error {
 	rootObject, err := boot( /*updateTests*/ false)
 	if err != nil {
 		return err
 	}
 
+	if *flag_gcc {
+		return errors.New("there is no support for installation when using gccgo")
+	}
 	if len(installationCommands) == 0 {
-		return os.NewError("nothing to install")
+		return errors.New("nothing to install")
 	}
 
 	err = installAllRemotePackages()
@@ -223,14 +227,14 @@ func install([]string) os.Error {
 	return nil
 }
 
-func uninstall([]string) os.Error {
+func uninstall([]string) error {
 	rootObject, err := boot( /*updateTests*/ false)
 	if err != nil {
 		return err
 	}
 
 	if len(installationCommands) == 0 {
-		return os.NewError("nothing to uninstall")
+		return errors.New("nothing to uninstall")
 	}
 
 	for _, cmd := range installationCommands {
@@ -243,26 +247,26 @@ func uninstall([]string) os.Error {
 	return nil
 }
 
-func installDependencies([]string) os.Error {
+func installDependencies([]string) error {
 	_, err := boot( /*updateTests*/ false)
 	if err != nil {
 		return err
 	}
 
 	if len(remotePackages) == 0 {
-		return os.NewError("there are no remote packages")
+		return errors.New("there are no remote packages")
 	}
 
 	return installAllRemotePackages()
 }
 
-func gofmt([]string) os.Error {
+func gofmt([]string) error {
 	rootObject, err := readDir()
 	if err != nil {
 		return err
 	}
 
-	var files vector.StringVector
+	var files []string
 	err = rootObject.GoFmt(&files)
 	if err != nil {
 		return err
@@ -274,7 +278,7 @@ func gofmt([]string) os.Error {
 }
 
 type function_info_t struct {
-	fn      func([]string) os.Error
+	fn      func([]string) error
 	minArgs int
 	maxArgs int
 }
@@ -292,15 +296,21 @@ var functionTable = map[string]function_info_t{
 	"gofmt":        {gofmt, 0, 0},
 }
 
-var flag_timings = flag.Bool("t", false, "Print timings pertaining executed commands")
-var flag_verbose = flag.Bool("v", false, "Verbose")
-var flag_debug = flag.Bool("d", false, "Print debugging messages")
-var flag_dashboard = flag.Bool("dashboard", true, "Report public packages at "+dashboardURL)
-var flag_version = flag.Bool("version", false, "Print version and exit")
+var (
+	flag_timings   = flag.Bool("t", false, "Print timings pertaining executed commands")
+	flag_verbose   = flag.Bool("v", false, "Verbose")
+	flag_debug     = flag.Bool("d", false, "Print debugging messages")
+	flag_dashboard = flag.Bool("dashboard", true, "Report public packages at "+dashboardURL)
+	flag_version   = flag.Bool("version", false, "Print version and exit")
+	flag_gcc       = flag.Bool("gcc", false, "Use gccgo as the compiler and linker")
+	flag_arch      = flag.String("conf-arch", runtime.GOARCH, "The value of GOARCH to use when interpreting GOAM.conf files")
+	flag_os        = flag.String("conf-os", runtime.GOOS, "The value of GOOS to use when interpreting GOAM.conf files")
+)
 
 func main() {
 	flag.Usage = func() { fmt.Fprintln(os.Stderr); usage() }
 	flag.Parse()
+	initArch()
 
 	args := flag.Args()
 	if *flag_version {

@@ -1,0 +1,21 @@
+List of common command-line options:
+
+  -v=false: Verbose
+
+  -d=false: Print debugging messages
+
+  -t=false: Print timings pertaining executed commands
+
+  -dashboard=true:
+    After a successful download and install of a remote package,
+    report the package at http://godashboard.appspot.com/package
+
+  -conf-arch="<your-ARCH>":
+    The value of GOARCH to use when interpreting GOAM.conf files.
+    The default value comes from the constant 'runtime.GOARCH' as defined
+    by the Go runtime ("386", "amd64", "arm").
+
+  -conf-os="<your-OS>":
+    The value of GOOS to use when interpreting GOAM.conf files.
+    The default value comes from the constant 'runtime.GOOS' as defined
+    by the Go runtime ("linux", "darwin", "windows", ...)

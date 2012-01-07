@@ -1,10 +1,10 @@
-// The source code in file is based on file
+// This source code is based on file
 // "src/cmd/goinstall/download.go" in the Go language distribution
 
 package main
 
 import (
-	"http"
+	"net/http"
 	"strings"
 )
 

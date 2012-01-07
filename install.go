@@ -1,25 +1,25 @@
 package main
 
 import (
+	"errors"
+	"io"
 	"os"
 	pathutil "path"
 	"strings"
 )
 
-
 // An installation command
 type installation_command_t interface {
 	// Performs the installation
-	Install(root *dir_t) os.Error
+	Install(root *dir_t) error
 
 	// Removes the installed files
-	Uninstall(root *dir_t) os.Error
+	Uninstall(root *dir_t) error
 }
 
 var installationCommands []installation_command_t = nil
 var installationCommands_bySrcPath = make(map[string]installation_command_t)
 var installationCommands_packagesByImport = make(map[string]*install_package_t)
-
 
 // =================
 // install_package_t
@@ -33,16 +33,16 @@ func new_installPackage(importPath string) *install_package_t {
 	return &install_package_t{importPath}
 }
 
-func (i *install_package_t) find() (*package_resolution_t, os.Error) {
+func (i *install_package_t) find() (*package_resolution_t, error) {
 	pkg, ok := importPathResolutionTable[i.importPath]
 	if !ok {
-		return nil, os.NewError("unable to install package \"" + i.importPath + "\": no such package")
+		return nil, errors.New("unable to install package \"" + i.importPath + "\": no such package")
 	}
 
 	return pkg, nil
 }
 
-func (i *install_package_t) Install(root *dir_t) os.Error {
+func (i *install_package_t) Install(root *dir_t) error {
 	pkg, err := i.find()
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (i *install_package_t) Install(root *dir_t) os.Error {
 	return nil
 }
 
-func (i *install_package_t) Uninstall(root *dir_t) os.Error {
+func (i *install_package_t) Uninstall(root *dir_t) error {
 	pkg, err := i.find()
 	if err != nil {
 		return err
@@ -70,7 +70,6 @@ func (i *install_package_t) Uninstall(root *dir_t) os.Error {
 	return nil
 }
 
-
 // ====================
 // install_executable_t
 // ====================
@@ -83,23 +82,23 @@ func new_installExecutable(srcPath string) *install_executable_t {
 	return &install_executable_t{srcPath}
 }
 
-func (i *install_executable_t) find(root *dir_t) (*executable_t, os.Error) {
+func (i *install_executable_t) find(root *dir_t) (*executable_t, error) {
 	var _exe object_t = root.getObject_orNil(strings.Split(i.srcPath, "/"))
 	if _exe == nil {
-		return nil, os.NewError("unable to locate executable \"" + i.srcPath + "\"")
+		return nil, errors.New("unable to locate executable \"" + i.srcPath + "\"")
 	}
 
 	var exe *executable_t
 	var isExe bool
 	exe, isExe = _exe.(*executable_t)
 	if !isExe {
-		return nil, os.NewError("\"" + _exe.Path() + "\" is not an executable")
+		return nil, errors.New("\"" + _exe.Path() + "\" is not an executable")
 	}
 
 	return exe, nil
 }
 
-func (i *install_executable_t) Install(root *dir_t) os.Error {
+func (i *install_executable_t) Install(root *dir_t) error {
 	exe, err := i.find(root)
 	if err != nil {
 		return err
@@ -108,7 +107,7 @@ func (i *install_executable_t) Install(root *dir_t) os.Error {
 	return exe.Install()
 }
 
-func (i *install_executable_t) Uninstall(root *dir_t) os.Error {
+func (i *install_executable_t) Uninstall(root *dir_t) error {
 	exe, err := i.find(root)
 	if err != nil {
 		return err
@@ -116,7 +115,6 @@ func (i *install_executable_t) Uninstall(root *dir_t) os.Error {
 
 	return exe.Uninstall()
 }
-
 
 // =============
 // install_dir_t
@@ -135,7 +133,7 @@ var cp_exe = &Executable{
 	name: "cp",
 }
 
-func (i *install_dir_t) Install(root *dir_t) os.Error {
+func (i *install_dir_t) Install(root *dir_t) error {
 	dstFullPath := pathutil.Join(libInstallRoot, i.dstPath)
 
 	err := mkdirAll(dstFullPath, 0777)
@@ -152,7 +150,7 @@ func (i *install_dir_t) Install(root *dir_t) os.Error {
 	return nil
 }
 
-func (i *install_dir_t) Uninstall(root *dir_t) os.Error {
+func (i *install_dir_t) Uninstall(root *dir_t) error {
 	dstFullPath := pathutil.Join(libInstallRoot, i.dstPath, i.srcPath)
 
 	err := dualWalk(i.srcPath, dstFullPath, uninstaller_t{})
@@ -168,18 +166,17 @@ func (i *install_dir_t) Uninstall(root *dir_t) os.Error {
 	return nil
 }
 
-
 // =============
 // uninstaller_t
 // =============
 
 type uninstaller_t struct{}
 
-func (uninstaller_t) EnterDir(masterPath, slavePath string, masterDir, slave_orNil *os.FileInfo) os.Error {
+func (uninstaller_t) EnterDir(masterPath, slavePath string, masterDir, slave_orNil os.FileInfo) error {
 	return nil
 }
 
-func (uninstaller_t) VisitFile(masterPath, slavePath string, master, slave_orNil *os.FileInfo) os.Error {
+func (uninstaller_t) VisitFile(masterPath, slavePath string, master, slave_orNil os.FileInfo) error {
 	if slave_orNil != nil {
 		if *flag_debug {
 			println("uninstall:", slavePath)
@@ -194,9 +191,9 @@ func (uninstaller_t) VisitFile(masterPath, slavePath string, master, slave_orNil
 	return nil
 }
 
-func (uninstaller_t) LeaveDir(masterPath, slavePath string, masterDir, slave_orNil *os.FileInfo) os.Error {
+func (uninstaller_t) LeaveDir(masterPath, slavePath string, masterDir, slave_orNil os.FileInfo) error {
 	if slave_orNil != nil {
-		if slave_orNil.IsDirectory() {
+		if slave_orNil.IsDir() {
 			isEmpty, err := isEmptyDir(slavePath)
 			if err != nil {
 				return err
@@ -212,22 +209,21 @@ func (uninstaller_t) LeaveDir(masterPath, slavePath string, masterDir, slave_orN
 				}
 			}
 		} else {
-			return os.NewError("cannot uninstall \"" + slavePath + "\": not a directory")
+			return errors.New("cannot uninstall \"" + slavePath + "\": not a directory")
 		}
 	}
 
 	return nil
 }
 
-
 type DualVisitor interface {
-	EnterDir(masterPath, slavePath string, masterDir, slave_orNil *os.FileInfo) os.Error
-	VisitFile(masterPath, slavePath string, master, slave_orNil *os.FileInfo) os.Error
-	LeaveDir(masterPath, slavePath string, masterDir, slave_orNil *os.FileInfo) os.Error
+	EnterDir(masterPath, slavePath string, masterDir, slave_orNil os.FileInfo) error
+	VisitFile(masterPath, slavePath string, master, slave_orNil os.FileInfo) error
+	LeaveDir(masterPath, slavePath string, masterDir, slave_orNil os.FileInfo) error
 }
 
-func dualWalk(master, slave string, v DualVisitor) os.Error {
-	var err os.Error
+func dualWalk(master, slave string, v DualVisitor) error {
+	var err error
 
 	master_fileInfo, err := os.Lstat(master)
 	if err != nil {
@@ -244,11 +240,11 @@ func dualWalk(master, slave string, v DualVisitor) os.Error {
 	return dualWalk_internal(master, slave, master_fileInfo, slave_fileInfo_orNil, v)
 }
 
-func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.FileInfo, v DualVisitor) os.Error {
-	var err os.Error
+func dualWalk_internal(masterPath, slavePath string, master, slave_orNil os.FileInfo, v DualVisitor) error {
+	var err error
 
 	switch {
-	case master.IsDirectory():
+	case master.IsDir():
 		err = v.EnterDir(masterPath, slavePath, master, slave_orNil)
 		if err != nil {
 			return err
@@ -279,13 +275,13 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.Fil
 				}
 			}
 
-			if (slave_orNil != nil) && slave_orNil.IsDirectory() {
+			if (slave_orNil != nil) && slave_orNil.IsDir() {
 				// The slave exists and it is a directory.
 				// Each entry in the master directory implicates an entry in the slave directory.
-				for i, _ := range master_entries {
-					master_entry := &master_entries[i]
-					master_entryPath := pathutil.Join(masterPath, master_entry.Name)
-					slave_entryPath := pathutil.Join(slavePath, master_entry.Name)
+				for i := range master_entries {
+					master_entry := master_entries[i]
+					master_entryPath := pathutil.Join(masterPath, master_entry.Name())
+					slave_entryPath := pathutil.Join(slavePath, master_entry.Name())
 
 					slave_entry_orNil, err := os.Lstat(slave_entryPath)
 					if err != nil {
@@ -302,10 +298,10 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.Fil
 			} else {
 				// The slave does not exist, or it exists but it is not a directory.
 				// It is impossible to descend into the non-existent slave directory.
-				for i, _ := range master_entries {
-					master_entry := &master_entries[i]
-					master_entryPath := pathutil.Join(masterPath, master_entry.Name)
-					slave_entryPath := pathutil.Join(slavePath, master_entry.Name)
+				for i := range master_entries {
+					master_entry := master_entries[i]
+					master_entryPath := pathutil.Join(masterPath, master_entry.Name())
+					slave_entryPath := pathutil.Join(slavePath, master_entry.Name())
 					err = dualWalk_internal(master_entryPath, slave_entryPath, master_entry, nil, v)
 					if err != nil {
 						return err
@@ -319,7 +315,7 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.Fil
 			return err
 		}
 
-	case master.IsRegular():
+	default:
 		err = v.VisitFile(masterPath, slavePath, master, slave_orNil)
 		if err != nil {
 			return err
@@ -329,15 +325,14 @@ func dualWalk_internal(masterPath, slavePath string, master, slave_orNil *os.Fil
 	return nil
 }
 
-
 // Remove all empty directories along the relative path.
 // Stops at the first non-empty directory, or at the directory 'root'.
-func uninstallEmptyDirs(root, relativePath string) os.Error {
+func uninstallEmptyDirs(root, relativePath string) error {
 	path := pathutil.Join(root, relativePath)
 
 	fileInfo, err := os.Stat(path)
 	if err == nil {
-		if fileInfo.IsDirectory() {
+		if fileInfo.IsDir() {
 			isEmpty, err := isEmptyDir(path)
 			if err != nil {
 				return err
@@ -382,15 +377,18 @@ up:
 	return nil
 }
 
-func isEmptyDir(path string) (bool, os.Error) {
+func isEmptyDir(path string) (bool, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return false, err
 	}
+	defer f.Close()
 
 	// Try to read 1 entry to see if the directory is empty
 	entries, err := f.Readdir(1)
-	f.Close()
+	if err == io.EOF {
+		return true, nil
+	}
 	if err != nil {
 		return false, err
 	}

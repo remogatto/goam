@@ -1,11 +1,5 @@
 Usage: goam [OPTIONS] make-tests
 
-Options:
-  -v=false: Verbose
-  -d=false: Print debugging messages
-  -t=false: Print timings pertaining executed commands
-  -dashboard=true: Report public packages at http://godashboard.appspot.com/package
-
 Description:
   Builds all tests and benchmarks of the project, does not execute them.
   The list of tests and benchmarks can be viewed by running "goam info".

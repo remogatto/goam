@@ -1,9 +1,6 @@
 Usage: goam [OPTIONS] benchmark [PATTERN]
 
 Options:
-  -v=false: Verbose
-  -d=false: Print debugging messages
-  -t=false: Print timings pertaining executed commands
   -dashboard=true: Report public packages at http://godashboard.appspot.com/package
 
 Description:

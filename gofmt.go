@@ -1,15 +1,12 @@
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "fmt"
 
 var gofmt_exe = &Executable{
 	name: "gofmt",
 }
 
-func goFmt(paths []string) os.Error {
+func goFmt(paths []string) error {
 	if *flag_debug {
 		fmt.Println("gofmt: %v", paths)
 	}
